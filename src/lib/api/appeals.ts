@@ -39,6 +39,10 @@ export interface Appeal {
   description: string;
   source: AppealSource;
   status: AppealStatus;
+  assigneeUserId: string | null;
+  resolutionNote: string | null;
+  resolvedById: string | null;
+  resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -91,6 +95,12 @@ export interface AppealPublicLink {
   active: boolean;
 }
 
+/** Status update / resolution (matches UpdateAppealDto). */
+export interface AppealUpdateInput extends Partial<AppealInput> {
+  status?: AppealStatus;
+  resolutionNote?: string;
+}
+
 /** Public unauthenticated submission (matches PublicCreateAppealDto). */
 export interface PublicAppealInput {
   fullName: string;
@@ -98,6 +108,8 @@ export interface PublicAppealInput {
   type: AppealType;
   targetRole: TargetRole;
   description: string;
+  /** Honeypot — must stay empty; real users never see this field. */
+  website?: string;
 }
 
 const appealsApi = {
@@ -107,8 +119,14 @@ const appealsApi = {
   create(input: AppealInput): Promise<Appeal> {
     return apiRequest<Appeal>("/appeals", { method: "POST", body: input });
   },
-  update(id: string, input: Partial<AppealInput> & { status?: AppealStatus }): Promise<Appeal> {
+  update(id: string, input: AppealUpdateInput): Promise<Appeal> {
     return apiRequest<Appeal>(`/appeals/${id}`, { method: "PATCH", body: input });
+  },
+  assign(id: string, assigneeUserId: string | null): Promise<Appeal> {
+    return apiRequest<Appeal>(`/appeals/${id}/assign`, {
+      method: "PATCH",
+      body: { assigneeUserId },
+    });
   },
   remove(id: string): Promise<void> {
     return apiRequest<void>(`/appeals/${id}`, { method: "DELETE" });
@@ -151,8 +169,17 @@ export function useCreateAppeal() {
 export function useUpdateAppeal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Partial<AppealInput> & { status?: AppealStatus } }) =>
+    mutationFn: ({ id, input }: { id: string; input: AppealUpdateInput }) =>
       appealsApi.update(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: APPEALS_KEY }),
+  });
+}
+
+export function useAssignAppeal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, assigneeUserId }: { id: string; assigneeUserId: string | null }) =>
+      appealsApi.assign(id, assigneeUserId),
     onSuccess: () => qc.invalidateQueries({ queryKey: APPEALS_KEY }),
   });
 }

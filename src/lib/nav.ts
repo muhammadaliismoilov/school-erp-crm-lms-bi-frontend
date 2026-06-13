@@ -83,6 +83,7 @@ export const MANAGEMENT_GROUP: NavGroup = {
     { href: "/schools", labelKey: "nav.schools", icon: School, permission: "settings.read" },
     { href: "/users", labelKey: "nav.users", icon: UserCog, permission: "users.read" },
     { href: "/roles", labelKey: "nav.roles", icon: ShieldCheck, permission: "roles.read" },
+    { href: "/appeals", labelKey: "nav.appeals", icon: MessagesSquare, permission: "appeals.read" },
   ],
 };
 
