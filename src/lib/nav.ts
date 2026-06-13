@@ -19,6 +19,7 @@ import {
   Trophy,
   FileBarChart,
   Building2,
+  DoorClosed,
   School,
   UserCog,
   ShieldCheck,
@@ -103,6 +104,7 @@ export const SETTINGS_GROUP: NavGroup = {
     { href: "/academic-years", labelKey: "nav.academicYears", icon: CalendarRange, permission: "academic.read" },
     { href: "/quarters", labelKey: "nav.quarters", icon: CalendarClock, permission: "academic.read" },
     { href: "/lesson-periods", labelKey: "nav.lessonPeriods", icon: Clock, permission: "academic.read" },
+    { href: "/rooms", labelKey: "nav.rooms", icon: DoorClosed, permission: "settings.read" },
   ],
 };
 
