@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Settings,
   CalendarRange,
+  CalendarClock,
   Blocks,
   type LucideIcon,
 } from "lucide-react";
@@ -99,6 +100,7 @@ export const SETTINGS_GROUP: NavGroup = {
   permission: "academic.read",
   children: [
     { href: "/academic-years", labelKey: "nav.academicYears", icon: CalendarRange, permission: "academic.read" },
+    { href: "/quarters", labelKey: "nav.quarters", icon: CalendarClock, permission: "academic.read" },
   ],
 };
 
