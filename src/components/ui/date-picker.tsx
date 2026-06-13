@@ -42,10 +42,20 @@ export function DatePicker({
 }: DatePickerProps) {
   const [text, setText] = useState(() => isoToDMY(value));
   const [open, setOpen] = useState(false);
+  // Popover ekran o'ng chetidan chiqib ketmasligi uchun zarur bo'lsa chapga ochiladi.
+  const [alignRight, setAlignRight] = useState(false);
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getUTCFullYear());
   const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
   const rootRef = useRef<HTMLDivElement>(null);
+
+  /** Ochishdan oldin joyni o'lchab, mos tomonni tanlaydi. */
+  function openCalendar() {
+    const POPOVER_WIDTH = 288; // w-72
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (rect) setAlignRight(rect.left + POPOVER_WIDTH > window.innerWidth - 8);
+    setOpen(true);
+  }
 
   // Tashqi value o'zgarsa matn + ko'rinayotgan oyni moslab qo'yamiz.
   useEffect(() => {
@@ -116,7 +126,7 @@ export function DatePicker({
         placeholder={placeholder}
         disabled={disabled}
         onChange={(e) => handleText(e.target.value)}
-        onFocus={() => setOpen(true)}
+        onFocus={openCalendar}
         className={cn(
           "h-10 w-full rounded-lg border border-line bg-surface pl-3 pr-10 text-sm text-ink",
           "placeholder:text-ink-muted/70 transition-colors",
@@ -128,7 +138,7 @@ export function DatePicker({
         type="button"
         tabIndex={-1}
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : openCalendar())}
         aria-label="Kalendar"
         className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink disabled:opacity-60"
       >
@@ -136,7 +146,12 @@ export function DatePicker({
       </button>
 
       {open && !disabled && (
-        <div className="absolute z-50 mt-2 w-72 rounded-xl border border-line bg-surface p-3 shadow-lg">
+        <div
+          className={cn(
+            "absolute z-50 mt-2 w-72 rounded-xl border border-line bg-surface p-3 shadow-lg",
+            alignRight ? "right-0" : "left-0",
+          )}
+        >
           <div className="mb-2 flex items-center gap-2">
             <button
               type="button"
