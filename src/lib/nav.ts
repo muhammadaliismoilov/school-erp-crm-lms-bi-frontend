@@ -22,6 +22,8 @@ import {
   School,
   UserCog,
   ShieldCheck,
+  Settings,
+  CalendarRange,
   type LucideIcon,
 } from "lucide-react";
 
@@ -87,6 +89,17 @@ export const MANAGEMENT_GROUP: NavGroup = {
   ],
 };
 
+/** "Sozlamalar" section — academic calendar and reference data. */
+export const SETTINGS_GROUP: NavGroup = {
+  id: "settings",
+  labelKey: "nav.settings",
+  icon: Settings,
+  permission: "academic.read",
+  children: [
+    { href: "/academic-years", labelKey: "nav.academicYears", icon: CalendarRange, permission: "academic.read" },
+  ],
+};
+
 export const NAV_ITEMS: NavEntry[] = [
   { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { href: "/explorer", labelKey: "nav.explorer", icon: TerminalSquare, badge: "explorer" },
@@ -110,6 +123,7 @@ export const NAV_ITEMS: NavEntry[] = [
     permission: "crm.read",
   },
   MANAGEMENT_GROUP,
+  SETTINGS_GROUP,
 ];
 
 /** Every navigable leaf, flattened — used for page-title resolution. */
