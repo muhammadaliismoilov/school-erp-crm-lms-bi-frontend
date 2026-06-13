@@ -11,7 +11,8 @@ import { ApiError } from "@/lib/api/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
-import { Field, Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 
 interface Props {
   open: boolean;
@@ -88,10 +89,10 @@ export function AcademicYearFormDrawer({ open, year, onClose }: Props) {
         <p className="label">{isEdit ? t("academicYears.edit.title") : t("academicYears.new.title")}</p>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("academicYears.f.startDate")} htmlFor="ay-start">
-            <Input id="ay-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <DateInput id="ay-start" value={startDate} onChange={setStartDate} />
           </Field>
           <Field label={t("academicYears.f.endDate")} htmlFor="ay-end">
-            <Input id="ay-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <DateInput id="ay-end" value={endDate} onChange={setEndDate} />
           </Field>
         </div>
         {startDate && endDate && deriveName(startDate, endDate) && (

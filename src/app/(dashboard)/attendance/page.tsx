@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useResourceArray, type ResourceRecord } from "@/lib/api/resource";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { PageHeader } from "@/components/ui/page-header";
 import { DataTable, type Column } from "@/components/ui/data-table";
 
@@ -63,12 +63,7 @@ export default function AttendancePage() {
         title={t("nav.attendance")}
         subtitle="O‘quvchilar davomati (sana bo‘yicha)"
         action={
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-44"
-          />
+          <DateInput value={date} onChange={setDate} className="w-44" />
         }
       />
       <DataTable

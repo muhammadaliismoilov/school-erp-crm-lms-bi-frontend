@@ -2,7 +2,7 @@
 
 import { AcademicTablePage } from "@/components/academic/table-page";
 import { useI18n } from "@/lib/i18n/provider";
-import { examColumns } from "../progress-exams/page";
+import { examColumns } from "../exam-columns";
 
 export default function StateExamPage() {
   const { t } = useI18n();

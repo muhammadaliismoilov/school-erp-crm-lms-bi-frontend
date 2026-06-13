@@ -18,6 +18,7 @@ import { COUNTRIES, UZ_REGIONS, districtsForRegion } from "@/lib/data/uz-regions
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Modal } from "@/components/ui/modal";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -353,33 +354,24 @@ export function SchoolFormModal({ open, onClose, school }: SchoolFormModalProps)
           <h4 className="label">{t("schools.section.capacity")}</h4>
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label={`${t("schools.f.totalCapacity")} *`} htmlFor="s-total">
-              <Input
+              <NumberInput
                 id="s-total"
-                type="number"
-                min={1}
                 value={form.totalCapacity}
-                onChange={(e) => set("totalCapacity", e.target.value)}
-                required
+                onChange={(v) => set("totalCapacity", v == null ? "" : String(v))}
               />
             </Field>
             <Field label={`${t("schools.f.elementaryCapacity")} *`} htmlFor="s-elem">
-              <Input
+              <NumberInput
                 id="s-elem"
-                type="number"
-                min={0}
                 value={form.elementaryCapacity}
-                onChange={(e) => set("elementaryCapacity", e.target.value)}
-                required
+                onChange={(v) => set("elementaryCapacity", v == null ? "" : String(v))}
               />
             </Field>
             <Field label={`${t("schools.f.upperCapacity")} *`} htmlFor="s-upper">
-              <Input
+              <NumberInput
                 id="s-upper"
-                type="number"
-                min={0}
                 value={form.upperCapacity}
-                onChange={(e) => set("upperCapacity", e.target.value)}
-                required
+                onChange={(v) => set("upperCapacity", v == null ? "" : String(v))}
               />
             </Field>
           </div>
@@ -393,12 +385,10 @@ export function SchoolFormModal({ open, onClose, school }: SchoolFormModalProps)
           <h4 className="label">{t("schools.section.payment")}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("schools.f.monthlyPayment")} htmlFor="s-pay">
-              <Input
+              <NumberInput
                 id="s-pay"
-                type="number"
-                min={0}
                 value={form.monthlyPayment}
-                onChange={(e) => set("monthlyPayment", e.target.value)}
+                onChange={(v) => set("monthlyPayment", v == null ? "" : String(v))}
               />
             </Field>
             <Field label={t("schools.f.workDays")} htmlFor="s-workdays">
@@ -457,12 +447,10 @@ export function SchoolFormModal({ open, onClose, school }: SchoolFormModalProps)
                     />
                   </Field>
                   <Field label={t("schools.f.groupAmount")} htmlFor={`g-amount-${i}`}>
-                    <Input
+                    <NumberInput
                       id={`g-amount-${i}`}
-                      type="number"
-                      min={0}
                       value={group.amount || ""}
-                      onChange={(e) => updateGroup(i, { amount: Number(e.target.value) })}
+                      onChange={(v) => updateGroup(i, { amount: v ?? 0 })}
                     />
                   </Field>
                   <Button

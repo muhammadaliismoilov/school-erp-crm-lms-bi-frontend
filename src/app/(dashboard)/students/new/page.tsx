@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { ArrowLeft } from "lucide-react";
 import { useCreateStudent, type CreateStudentInput } from "@/lib/api/students";
 import { ApiError } from "@/lib/api/types";
@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { PageHeader } from "@/components/ui/page-header";
 
 export default function NewStudentPage() {
@@ -21,6 +22,7 @@ export default function NewStudentPage() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<CreateStudentInput>();
@@ -96,7 +98,17 @@ export default function NewStudentPage() {
               />
             </Field>
             <Field label="Tug‘ilgan sana" htmlFor="birthDate">
-              <Input id="birthDate" type="date" {...register("birthDate")} />
+              <Controller
+                control={control}
+                name="birthDate"
+                render={({ field }) => (
+                  <DateInput
+                    id="birthDate"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
             </Field>
           </div>
 

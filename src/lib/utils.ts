@@ -1,25 +1,21 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { formatDateDMY, formatNumberSpaced } from "@/lib/format";
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
+/** Pul summasi — mingliklar bo'shliq bilan, butun som: `100 000`. */
 export function formatMoney(value: number | string | null | undefined): string {
   const n = typeof value === "string" ? Number(value) : (value ?? 0);
   if (Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 }).format(n);
+  return formatNumberSpaced(Math.round(n));
 }
 
+/** Sana ko'rsatish — `dd/mm/yyyy` (kun/oy/yil). */
 export function formatDate(value: string | Date | null | undefined): string {
-  if (!value) return "—";
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) return "—";
-  return new Intl.DateTimeFormat("uz-UZ", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(d);
+  return formatDateDMY(value);
 }
 
 export function initials(first?: string, last?: string): string {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { ImageIcon, UserCircle2, Check } from "lucide-react";
 import {
   useProfile,
@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Card, Spinner } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { cn } from "@/lib/utils";
 
 type FormValues = UpdateProfileInput & { login?: string };
@@ -29,6 +30,7 @@ export default function ProfilePage() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
@@ -241,7 +243,17 @@ export default function ProfilePage() {
             {/* Birth date + gender */}
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Tug'ilgan sana" htmlFor="birthDate">
-                <Input id="birthDate" type="date" {...register("birthDate")} />
+                <Controller
+                  control={control}
+                  name="birthDate"
+                  render={({ field }) => (
+                    <DateInput
+                      id="birthDate"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
               </Field>
               <Field label="Jins">
                 <div className="flex gap-3">

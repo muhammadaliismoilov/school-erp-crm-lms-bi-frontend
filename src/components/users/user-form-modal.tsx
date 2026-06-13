@@ -21,6 +21,7 @@ import { ApiError } from "@/lib/api/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Modal } from "@/components/ui/modal";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -378,11 +379,10 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
           <h4 className="label">{t("users.section.main")}</h4>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("users.f.birthDate")} htmlFor="u-birth">
-              <Input
+              <DateInput
                 id="u-birth"
-                type="date"
                 value={form.birthDate}
-                onChange={(e) => set("birthDate", e.target.value)}
+                onChange={(iso) => set("birthDate", iso)}
               />
             </Field>
             <Field label={t("users.f.documentNumber")} htmlFor="u-doc">

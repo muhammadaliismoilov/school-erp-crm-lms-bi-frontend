@@ -20,7 +20,7 @@ import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { UserFormModal } from "@/components/users/user-form-modal";
-import { cn, formatMoney } from "@/lib/utils";
+import { cn, formatDate, formatMoney } from "@/lib/utils";
 
 const PAGE_SIZE = 30;
 
@@ -190,9 +190,7 @@ export default function UsersPage() {
       className: "tnum",
       render: (u) =>
         u.birthDate ? (
-          <span className="text-ink-soft">
-            {new Date(u.birthDate).toLocaleDateString(locale === "en" ? "en-GB" : "ru-RU")}
-          </span>
+          <span className="text-ink-soft">{formatDate(u.birthDate)}</span>
         ) : (
           "—"
         ),

@@ -18,12 +18,10 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { AcademicYearFormDrawer } from "@/components/academic/academic-year-form-drawer";
-import { cn, formatMoney } from "@/lib/utils";
+import { cn, formatDate, formatMoney } from "@/lib/utils";
 
 function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("ru-RU"); // dd.mm.yyyy
+  return formatDate(iso); // dd/mm/yyyy
 }
 
 function StatCard({
