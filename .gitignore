@@ -1,0 +1,29 @@
+# dependencies
+/node_modules
+
+# next.js / build
+/.next
+/out
+/build
+*.tsbuildinfo
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+
+# env files (faqat .example fayllar push qilinadi)
+.env
+
+
+# deploy
+.vercel
+
+# typescript
+next-env.d.ts
+
+# test coverage
+/coverage
+
+# claude code lokal sozlamalari
+.claude/settings.local.json

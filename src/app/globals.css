@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Yuton Console — design language "Lime Terminal".
+ * A sharp, technical admin console: warm near-black slabs, paper-warm light
+ * mode, a single electric-lime signal accent, and mono detailing for the API
+ * surface. Dual theme driven by [data-theme] on <html>.
+ *
+ * Colors are raw "R G B" channels so Tailwind opacity modifiers resolve via
+ * rgb(var(--x) / <alpha>). Token NAMES are stable across themes; only values
+ * flip — every component re-themes for free.
+ */
+
+:root,
+:root[data-theme="light"] {
+  /* text */
+  --ink: 28 26 21;
+  --ink-soft: 78 73 63;
+  --ink-muted: 124 117 104;
+
+  /* app surfaces */
+  --parchment: 243 241 233; /* page background */
+  --parchment-deep: 233 230 220; /* inset / table head */
+  --surface: 252 251 246; /* cards */
+  --line: 222 218 206;
+
+  /* constant dark slab (sidebar / primary button) — same in both themes */
+  --navy: 20 22 18;
+  --navy-soft: 33 36 30;
+  --navy-deep: 12 14 11;
+
+  /* constant light ink that always sits ON the dark slab */
+  --paper: 236 234 223;
+
+  /* accent — electric lime; theme-aware so text stays legible */
+  --amber: 78 104 18; /* readable lime-text on paper */
+  --amber-soft: 206 224 156;
+  --accent: 132 196 16; /* solid lime fill */
+  --accent-fg: 16 22 8; /* near-black text on accent fill */
+
+  --positive: 42 122 78;
+  --negative: 178 54 50;
+  --caution: 168 116 22;
+
+  --shadow-card: 0 1px 2px rgba(20, 22, 18, 0.05),
+    0 10px 30px -18px rgba(20, 22, 18, 0.22);
+  --shadow-pop: 0 16px 48px -14px rgba(20, 22, 18, 0.34);
+
+  --grain-dot: rgba(20, 22, 18, 0.028);
+
+  --font-display: "Bricolage Grotesque", Georgia, serif;
+  --font-body: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root[data-theme="dark"] {
+  --ink: 233 231 221;
+  --ink-soft: 169 165 152;
+  --ink-muted: 122 120 108;
+
+  --parchment: 16 17 14; /* warm black page */
+  --parchment-deep: 26 28 23;
+  --surface: 23 25 20; /* cards */
+  --line: 45 48 40;
+
+  --navy: 12 13 10; /* slab even darker than page */
+  --navy-soft: 26 28 23;
+  --navy-deep: 8 9 7;
+
+  --paper: 236 234 223;
+
+  --amber: 198 240 84; /* bright lime text on dark */
+  --amber-soft: 58 70 28;
+  --accent: 198 240 84;
+  --accent-fg: 14 18 7;
+
+  --positive: 78 200 132;
+  --negative: 240 112 102;
+  --caution: 232 184 86;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 14px 34px -20px rgba(0, 0, 0, 0.7);
+  --shadow-pop: 0 18px 52px -14px rgba(0, 0, 0, 0.72);
+
+  --grain-dot: rgba(255, 255, 255, 0.022);
+}
+
+* {
+  border-color: rgb(var(--line));
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+body {
+  background-color: rgb(var(--parchment));
+  color: rgb(var(--ink));
+  font-family: var(--font-body);
+  font-feature-settings: "ss01";
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* page grain texture */
+.bg-grain {
+  background-image: radial-gradient(var(--grain-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* dark slab with subtle lime aurora — used by the sidebar */
+.bg-navy-texture {
+  background-color: rgb(var(--navy));
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(
+      80% 50% at 15% 0%,
+      rgb(var(--accent) / 0.14),
+      transparent 70%
+    ),
+    linear-gradient(170deg, rgb(var(--navy-deep)), rgb(var(--navy-soft)));
+  background-size: 18px 18px, 100% 100%, 100% 100%;
+}
+
+@layer components {
+  .card {
+    @apply rounded-card border bg-surface shadow-card;
+  }
+  .focus-ring {
+    @apply outline-none ring-2 ring-accent/55 ring-offset-2 ring-offset-parchment;
+  }
+  .label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-muted;
+  }
+}
+
+/* HTTP verb chips for the API console */
+.verb-GET {
+  color: rgb(var(--positive));
+  background: rgb(var(--positive) / 0.12);
+}
+.verb-POST {
+  color: rgb(72 132 255);
+  background: rgb(72 132 255 / 0.14);
+}
+:root[data-theme="dark"] .verb-POST {
+  color: rgb(125 168 255);
+}
+.verb-PATCH {
+  color: rgb(var(--caution));
+  background: rgb(var(--caution) / 0.14);
+}
+.verb-PUT {
+  color: rgb(150 92 220);
+  background: rgb(150 92 220 / 0.14);
+}
+:root[data-theme="dark"] .verb-PUT {
+  color: rgb(186 142 240);
+}
+.verb-DELETE {
+  color: rgb(var(--negative));
+  background: rgb(var(--negative) / 0.13);
+}
+
+.stagger > * {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.1s; }
+.stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger > *:nth-child(5) { animation-delay: 0.18s; }
+.stagger > *:nth-child(6) { animation-delay: 0.22s; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+::selection {
+  background: rgb(var(--accent) / 0.85);
+  color: rgb(var(--accent-fg));
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--ink) / 0.18);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--ink) / 0.3);
+  background-clip: content-box;
+}
