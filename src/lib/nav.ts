@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Settings,
   CalendarRange,
+  Blocks,
   type LucideIcon,
 } from "lucide-react";
 
@@ -86,6 +87,7 @@ export const MANAGEMENT_GROUP: NavGroup = {
     { href: "/users", labelKey: "nav.users", icon: UserCog, permission: "users.read" },
     { href: "/roles", labelKey: "nav.roles", icon: ShieldCheck, permission: "roles.read" },
     { href: "/appeals", labelKey: "nav.appeals", icon: MessagesSquare, permission: "appeals.read" },
+    { href: "/integrations", labelKey: "nav.integrations", icon: Blocks, permission: "integrations.read" },
   ],
 };
 
