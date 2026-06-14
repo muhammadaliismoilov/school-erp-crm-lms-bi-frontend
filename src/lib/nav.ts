@@ -8,6 +8,7 @@ import {
   TerminalSquare,
   CalendarDays,
   BookOpen,
+  BookMarked,
   NotebookPen,
   ClipboardList,
   Award,
@@ -107,6 +108,7 @@ export const SETTINGS_GROUP: NavGroup = {
     { href: "/rooms", labelKey: "nav.rooms", icon: DoorClosed, permission: "settings.read" },
     { href: "/classes", labelKey: "nav.classes", icon: GraduationCap, permission: "academic.read" },
     { href: "/subjects", labelKey: "nav.subjects", icon: BookOpen, permission: "academic.read" },
+    { href: "/courses", labelKey: "nav.courses", icon: BookMarked, permission: "academic.read" },
   ],
 };
 
