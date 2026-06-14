@@ -85,9 +85,20 @@ export function SubjectFormDrawer({ open, subject, onClose }: Props) {
       }
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.localized("uz") : t("common.error"));
+      setError(err instanceof ApiError ? err.detailedMessage("uz", FIELD_LABELS) : t("common.error"));
     }
   }
+
+  const FIELD_LABELS = {
+    name: t("subjects.f.name"),
+    russianName: t("subjects.f.russianName"),
+    englishName: t("subjects.f.englishName"),
+    color: t("subjects.f.color"),
+    description: t("subjects.f.description"),
+    status: t("subjects.f.active"),
+    isActive: t("subjects.f.active"),
+    code: "Kod",
+  };
 
   const title = isEdit ? t("subjects.edit.title") : t("subjects.new.title");
   const subtitle = isEdit ? t("subjects.edit.subtitle") : t("subjects.new.subtitle");
@@ -189,7 +200,9 @@ export function SubjectFormDrawer({ open, subject, onClose }: Props) {
         </div>
 
         {error && (
-          <p className="rounded-lg bg-negative/10 px-3 py-2 text-sm text-negative">{error}</p>
+          <p className="whitespace-pre-line rounded-lg bg-negative/10 px-3 py-2 text-sm text-negative">
+            {error}
+          </p>
         )}
       </form>
     </Drawer>
