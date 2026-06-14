@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Select } from "@/components/ui/select";
 import { hourOptions, joinTime, minuteOptions, splitTime } from "@/lib/time";
 
@@ -17,7 +17,12 @@ interface TimeInputProps {
   idPrefix?: string;
 }
 
-/** Soat + Daqiqa dropdownlaridan iborat vaqt tanlagich; `HH:mm` chiqaradi. */
+/**
+ * Soat + Daqiqa dropdownlaridan iborat vaqt tanlagich; `HH:mm` chiqaradi.
+ *
+ * Soat/daqiqa qismlari ichki state'da alohida saqlanadi — shunda bitta qismni
+ * tanlash (masalan faqat soat) ikkinchisi bo'sh bo'lsa ham yo'qolmaydi.
+ */
 export function TimeInput({
   value,
   onChange,
@@ -27,12 +32,31 @@ export function TimeInput({
   disabled,
   idPrefix,
 }: TimeInputProps) {
-  const { hour, minute } = splitTime(value);
+  const [hour, setHour] = useState("");
+  const [minute, setMinute] = useState("");
+
+  // Tashqi value o'zgarsa qismlarni moslaymiz (faqat haqiqatan farq qilsa,
+  // qisman kiritmani buzmaslik uchun).
+  useEffect(() => {
+    const parts = splitTime(value);
+    if (joinTime(hour, minute) !== value) {
+      setHour(parts.hour);
+      setMinute(parts.minute);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
   const hours = useMemo(() => hourOptions().map((h) => ({ value: h, label: h })), []);
   const minutes = useMemo(
     () => minuteOptions(minuteStep).map((m) => ({ value: m, label: m })),
     [minuteStep],
   );
+
+  function commit(nextHour: string, nextMinute: string) {
+    setHour(nextHour);
+    setMinute(nextMinute);
+    onChange(joinTime(nextHour, nextMinute));
+  }
 
   return (
     <div className="flex items-end gap-2">
@@ -42,7 +66,7 @@ export function TimeInput({
           id={idPrefix ? `${idPrefix}-hour` : undefined}
           value={hour}
           disabled={disabled}
-          onChange={(e) => onChange(joinTime(e.target.value, minute))}
+          onChange={(e) => commit(e.target.value, minute)}
           options={hours}
           placeholder="--"
         />
@@ -54,7 +78,7 @@ export function TimeInput({
           id={idPrefix ? `${idPrefix}-minute` : undefined}
           value={minute}
           disabled={disabled}
-          onChange={(e) => onChange(joinTime(hour, e.target.value))}
+          onChange={(e) => commit(hour, e.target.value)}
           options={minutes}
           placeholder="--"
         />

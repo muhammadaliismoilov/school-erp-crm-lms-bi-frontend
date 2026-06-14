@@ -105,6 +105,7 @@ export const SETTINGS_GROUP: NavGroup = {
     { href: "/quarters", labelKey: "nav.quarters", icon: CalendarClock, permission: "academic.read" },
     { href: "/lesson-periods", labelKey: "nav.lessonPeriods", icon: Clock, permission: "academic.read" },
     { href: "/rooms", labelKey: "nav.rooms", icon: DoorClosed, permission: "settings.read" },
+    { href: "/classes", labelKey: "nav.classes", icon: GraduationCap, permission: "academic.read" },
   ],
 };
 

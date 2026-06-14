@@ -27,7 +27,10 @@ export interface Quarter {
 export function useClasses() {
   return useQuery({
     queryKey: ["academic", "classes"],
-    queryFn: () => apiRequest<SchoolClass[]>("/academic/classes"),
+    // The classes endpoint returns an `{ items, stats }` envelope; lightweight
+    // consumers (e.g. the journal filters) only need the list of classes.
+    queryFn: () =>
+      apiRequest<{ items: SchoolClass[] }>("/academic/classes").then((res) => res.items),
     staleTime: 60_000,
   });
 }
