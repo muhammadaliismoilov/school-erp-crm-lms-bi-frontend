@@ -49,7 +49,10 @@ export function useSubjects() {
 export function useQuarters() {
   return useQuery({
     queryKey: ["academic", "quarters"],
-    queryFn: () => apiRequest<Quarter[]>("/academic/quarters"),
+    // The quarters endpoint returns an `{ items, stats }` envelope; lightweight
+    // consumers (journal filters, course form) only need the list of quarters.
+    queryFn: () =>
+      apiRequest<{ items: Quarter[] }>("/academic/quarters").then((res) => res.items),
     staleTime: 60_000,
     placeholderData: keepPreviousData,
   });
