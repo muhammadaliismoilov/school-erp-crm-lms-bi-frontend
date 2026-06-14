@@ -128,6 +128,7 @@ export async function apiRequest<T>(
       err?.code ?? "REQUEST_FAILED",
       err?.message ?? `Request failed with status ${res.status}`,
       err?.messages,
+      err?.details,
     );
   }
 
