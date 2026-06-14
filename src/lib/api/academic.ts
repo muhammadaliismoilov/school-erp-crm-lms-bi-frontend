@@ -38,7 +38,10 @@ export function useClasses() {
 export function useSubjects() {
   return useQuery({
     queryKey: ["academic", "subjects"],
-    queryFn: () => apiRequest<Subject[]>("/academic/subjects"),
+    // The subjects endpoint returns an `{ items, stats }` envelope; lightweight
+    // consumers (e.g. the journal filters) only need the list of subjects.
+    queryFn: () =>
+      apiRequest<{ items: Subject[] }>("/academic/subjects").then((res) => res.items),
     staleTime: 60_000,
   });
 }
