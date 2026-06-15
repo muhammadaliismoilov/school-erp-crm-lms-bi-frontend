@@ -1,9 +1,11 @@
 "use client";
 
-import { Info, Pencil, Trash2 } from "lucide-react";
+import { Clock, Info, Pencil, Trash2 } from "lucide-react";
 import {
   LEAD_STATUSES,
+  leadHistoryActionKey,
   useLead,
+  useLeadHistory,
   useMoveLead,
   type Lead,
   type LeadStatus,
@@ -13,6 +15,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { Select } from "@/components/ui/select";
+import { isoToDMY } from "@/lib/format";
 
 interface Props {
   open: boolean;
@@ -36,9 +39,15 @@ export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete }: Pr
   const can = useAuthStore((s) => s.can);
   const canManage = can("crm.manage");
   const { data, isLoading } = useLead(open ? leadId : null);
+  const history = useLeadHistory(open ? leadId : null);
   const move = useMoveLead();
 
   const statusOptions = LEAD_STATUSES.map((s) => ({ value: s, label: t(`crm.status.${s}`) }));
+
+  const formatDateTime = (iso: string): string => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : `${isoToDMY(iso)} · ${d.toTimeString().slice(0, 5)}`;
+  };
 
   return (
     <Drawer open={open} onClose={onClose} title={t("crm.lead.detailTitle")} icon={<Info className="h-5 w-5" />}>
@@ -89,6 +98,45 @@ export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete }: Pr
             <div className="col-span-2">
               <InfoRow label={t("crm.lead.notes")} value={data.notes || "—"} />
             </div>
+          </div>
+
+          <div>
+            <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
+              <Clock className="h-4 w-4 text-ink-muted" />
+              {t("crm.history.title")}
+            </p>
+
+            {history.isLoading ? (
+              <p className="text-sm text-ink-muted">{t("common.loading")}</p>
+            ) : (history.data?.length ?? 0) === 0 ? (
+              <p className="rounded-lg bg-parchment/50 px-3 py-4 text-center text-sm text-ink-muted">
+                {t("crm.history.empty")}
+              </p>
+            ) : (
+              <ol className="space-y-3 border-l border-line pl-4">
+                {history.data?.map((entry) => {
+                  const statusDetail =
+                    entry.details && typeof entry.details.status === "string"
+                      ? t(`crm.status.${entry.details.status}`)
+                      : null;
+                  return (
+                    <li key={entry.id} className="relative">
+                      <span className="absolute -left-[1.3rem] top-1 h-2.5 w-2.5 rounded-full border-2 border-surface bg-accent" />
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                        <span className="text-sm font-medium text-ink">
+                          {entry.actorName || t("crm.history.system")}
+                        </span>
+                        <span className="text-xs text-ink-muted tnum">{formatDateTime(entry.timestamp)}</span>
+                      </div>
+                      <p className="text-sm text-ink-soft">
+                        {t(leadHistoryActionKey(entry.action))}
+                        {statusDetail ? `: ${statusDetail}` : ""}
+                      </p>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </div>
         </div>
       )}

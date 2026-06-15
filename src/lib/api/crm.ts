@@ -65,6 +65,30 @@ export interface LeadInput {
   notes?: string;
 }
 
+export interface LeadHistoryEntry {
+  id: string;
+  action: string;
+  actorName?: string | null;
+  timestamp: string;
+  details?: Record<string, unknown> | null;
+}
+
+/** Map an audit action code to its i18n label key. Pure + testable. */
+export function leadHistoryActionKey(action: string): string {
+  switch (action) {
+    case "lead.created":
+      return "crm.history.created";
+    case "lead.updated":
+      return "crm.history.updated";
+    case "lead.status_changed":
+      return "crm.history.statusChanged";
+    case "lead.deleted":
+      return "crm.history.deleted";
+    default:
+      return "crm.history.generic";
+  }
+}
+
 export interface Source {
   id: string;
   name: string;
@@ -97,6 +121,9 @@ const api = {
   },
   getLead(id: string): Promise<Lead> {
     return apiRequest<Lead>(`/crm/leads/${id}`);
+  },
+  leadHistory(id: string): Promise<LeadHistoryEntry[]> {
+    return apiRequest<LeadHistoryEntry[]>(`/crm/leads/${id}/history`);
   },
   createLead(input: LeadInput): Promise<Lead> {
     return apiRequest<Lead>("/crm/leads", { method: "POST", body: input });
@@ -140,6 +167,14 @@ export function useLead(id: string | null) {
   return useQuery({
     queryKey: [...LEADS_KEY, "detail", id],
     queryFn: () => api.getLead(id as string),
+    enabled: Boolean(id),
+  });
+}
+
+export function useLeadHistory(id: string | null) {
+  return useQuery({
+    queryKey: [...LEADS_KEY, "history", id],
+    queryFn: () => api.leadHistory(id as string),
     enabled: Boolean(id),
   });
 }
