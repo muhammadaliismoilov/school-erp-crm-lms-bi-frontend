@@ -129,10 +129,14 @@ export const NAV_ITEMS: NavEntry[] = [
     permission: "finance.read",
   },
   {
-    href: "/crm",
+    id: "crm",
     labelKey: "nav.crm",
     icon: UserPlus,
     permission: "crm.read",
+    children: [
+      { href: "/crm/leads", labelKey: "nav.crm.leads", icon: Users, permission: "crm.read" },
+      { href: "/crm/sources", labelKey: "nav.crm.sources", icon: Blocks, permission: "crm.read" },
+    ],
   },
   MANAGEMENT_GROUP,
   SETTINGS_GROUP,
