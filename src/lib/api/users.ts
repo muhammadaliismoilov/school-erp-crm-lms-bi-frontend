@@ -113,6 +113,9 @@ export interface UserInput {
 /** Matches UpdateUserDto — every field optional, plus status. */
 export type UserUpdateInput = Partial<UserInput> & { status?: UserStatus };
 
+/** Create response — carries the one-time generated password for the credentials dialog. */
+export type CreatedUser = User & { generatedPassword: string };
+
 const usersApi = {
   list(params: UserListParams): Promise<UserListResult> {
     return apiRequest<UserListResult>("/users", { query: { ...params } });
@@ -120,8 +123,8 @@ const usersApi = {
   get(id: string): Promise<User> {
     return apiRequest<User>(`/users/${id}`);
   },
-  create(input: UserInput): Promise<User> {
-    return apiRequest<User>("/users", { method: "POST", body: input });
+  create(input: UserInput): Promise<CreatedUser> {
+    return apiRequest<CreatedUser>("/users", { method: "POST", body: input });
   },
   update(id: string, input: UserUpdateInput): Promise<User> {
     return apiRequest<User>(`/users/${id}`, { method: "PATCH", body: input });

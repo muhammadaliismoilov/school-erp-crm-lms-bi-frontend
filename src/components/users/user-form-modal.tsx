@@ -23,6 +23,7 @@ import { Field, Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
 import { Modal } from "@/components/ui/modal";
 import { Select, type SelectOption } from "@/components/ui/select";
+import { CredentialsModal } from "@/components/users/credentials-modal";
 import { cn } from "@/lib/utils";
 
 interface FormState {
@@ -104,6 +105,10 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [login, setLogin] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginSaved, setLoginSaved] = useState(false);
+  const [credentials, setCredentials] = useState<{ login: string; password: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -114,6 +119,9 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
       setPassword("");
       setPasswordError(null);
       setPasswordSaved(false);
+      setLogin(user?.login ?? "");
+      setLoginError(null);
+      setLoginSaved(false);
     }
   }, [open, user]);
 
@@ -210,12 +218,31 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
     try {
       if (user) {
         await update.mutateAsync({ id: user.id, input: payload });
+        onClose();
       } else {
-        await create.mutateAsync(payload);
+        const created = await create.mutateAsync(payload);
+        // Surface the one-time auto-generated login + password, then close the form.
+        setCredentials({ login: created.login, password: created.generatedPassword });
+        onClose();
       }
-      onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.detailedMessage(locale, FIELD_LABELS) : t("common.error"));
+    }
+  }
+
+  async function handleLoginSave() {
+    if (!user) return;
+    setLoginError(null);
+    setLoginSaved(false);
+    if (login.trim().length < 3) {
+      setLoginError(t("users.err.loginLength"));
+      return;
+    }
+    try {
+      await update.mutateAsync({ id: user.id, input: { username: login.trim() } });
+      setLoginSaved(true);
+    } catch (err) {
+      setLoginError(err instanceof ApiError ? err.detailedMessage(locale, FIELD_LABELS) : t("common.error"));
     }
   }
 
@@ -254,6 +281,7 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
   }
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -481,13 +509,39 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
         )}
       </form>
 
-      {/* Parolni tahrirlash — faqat tahrirlash rejimida */}
+      {/* Login va parolni tahrirlash — faqat tahrirlash rejimida */}
       {isEdit && (
         <section className="mt-7 space-y-4 border-t border-line pt-6">
           <h4 className="label flex items-center gap-2">
             <KeyRound className="h-4 w-4" />
-            {t("users.section.password")}
+            {t("users.section.credentials")}
           </h4>
+          <div className="flex items-end gap-3">
+            <Field label={t("users.f.login")} htmlFor="u-login">
+              <Input
+                id="u-login"
+                value={login}
+                onChange={(e) => {
+                  setLogin(e.target.value);
+                  setLoginSaved(false);
+                }}
+                placeholder={t("users.placeholder.login")}
+                autoComplete="off"
+              />
+            </Field>
+            <Button
+              type="button"
+              variant="accent"
+              onClick={handleLoginSave}
+              loading={update.isPending}
+              disabled={login.trim().length === 0 || login.trim() === (user?.login ?? "")}
+            >
+              {t("users.editLogin")}
+            </Button>
+          </div>
+          {loginError && <p className="text-xs text-negative">{loginError}</p>}
+          {loginSaved && <p className="text-xs text-positive">{t("users.loginSaved")}</p>}
+
           <div className="flex items-end gap-3">
             <Field label={t("users.f.password")} htmlFor="u-password">
               <Input
@@ -517,5 +571,8 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
         </section>
       )}
     </Modal>
+
+    <CredentialsModal open={Boolean(credentials)} credentials={credentials} onClose={() => setCredentials(null)} />
+    </>
   );
 }
