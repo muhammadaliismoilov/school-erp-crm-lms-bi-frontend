@@ -33,7 +33,9 @@ export function LeadFormDrawer({ open, lead, onClose }: Props) {
   const pending = create.isPending || update.isPending;
 
   const sources = useLeadSources();
-  const managers = useUsers({ role: "SALES_MANAGER", limit: 100 });
+  // Any staff member can be the responsible manager — no role filter, otherwise
+  // the dropdown is empty when nobody holds the exact SALES_MANAGER role.
+  const managers = useUsers({ limit: 100 });
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

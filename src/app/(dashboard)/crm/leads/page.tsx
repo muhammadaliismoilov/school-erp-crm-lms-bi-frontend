@@ -81,8 +81,9 @@ export default function LeadsPage() {
       status: statusFilter || undefined,
       sourceId: sourceId || undefined,
       page,
-      // Kanban needs all leads grouped; table paginates.
-      limit: view === "kanban" ? 200 : 20,
+      // Kanban groups all fetched leads; table paginates. The backend caps the
+      // page size at 100, so the kanban uses the max allowed limit.
+      limit: view === "kanban" ? 100 : 20,
     }),
     [search, statusFilter, sourceId, page, view],
   );
