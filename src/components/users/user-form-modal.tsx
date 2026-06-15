@@ -4,14 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, KeyRound, Loader2, X } from "lucide-react";
 import {
   USER_GENDERS,
-  USER_ROLES,
   useCreateUser,
   useUpdateUser,
   type User,
   type UserGender,
   type UserInput,
-  type UserRole,
 } from "@/lib/api/users";
+import { useRoles } from "@/lib/api/roles";
 import {
   ACCEPTED_IMAGE_TYPES,
   MAX_UPLOAD_SIZE,
@@ -37,7 +36,7 @@ interface FormState {
   documentNumber: string;
   gender: UserGender;
   phone: string;
-  role: UserRole;
+  roleName: string;
   pinfl: string;
   profileImageUrl: string | null;
   profileImageFileId: string | null;
@@ -54,17 +53,15 @@ const emptyForm: FormState = {
   documentNumber: "",
   gender: "male",
   phone: "",
-  role: "STUDENT",
+  roleName: "",
   pinfl: "",
   profileImageUrl: null,
   profileImageFileId: null,
 };
 
-function roleOf(user: User): UserRole {
-  const candidate = (user.role ?? user.roles[0]?.name ?? "").toUpperCase();
-  return (USER_ROLES as readonly string[]).includes(candidate)
-    ? (candidate as UserRole)
-    : "STUDENT";
+/** The user's current role name (from the dynamic roles table). */
+function roleOf(user: User): string {
+  return user.roles[0]?.name ?? user.role ?? "";
 }
 
 function fromUser(user: User): FormState {
@@ -79,7 +76,7 @@ function fromUser(user: User): FormState {
     documentNumber: user.documentNumber ?? "",
     gender: user.gender ?? "male",
     phone: user.phone ?? "",
-    role: roleOf(user),
+    roleName: roleOf(user),
     pinfl: user.pinfl ?? "",
     profileImageUrl: user.profileImageUrl ?? null,
     profileImageFileId: user.profileImageFileId ?? null,
@@ -158,10 +155,19 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
   const avatarInitials =
     `${form.firstName[0] ?? ""}${form.lastName[0] ?? ""}`.toUpperCase() || "?";
 
+  const roles = useRoles({ limit: 100 });
   const roleOptions: SelectOption[] = useMemo(
-    () => USER_ROLES.map((r) => ({ value: r, label: t(`users.role.${r}`) })),
-    [t],
+    () => (roles.data?.items ?? []).map((r) => ({ value: r.name, label: r.displayName || r.name })),
+    [roles.data],
   );
+
+  // Default the role to the first available one when creating.
+  useEffect(() => {
+    if (open && !user && !form.roleName && roleOptions.length > 0) {
+      set("roleName", roleOptions[0].value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, user, roleOptions, form.roleName]);
 
   function buildPayload(): UserInput {
     const trimmed = (s: string) => {
@@ -179,7 +185,7 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
       documentNumber: trimmed(form.documentNumber),
       gender: form.gender,
       phone: trimmed(form.phone),
-      role: form.role,
+      roleNames: form.roleName ? [form.roleName] : undefined,
       pinfl: trimmed(form.pinfl),
       profileImageUrl: form.profileImageUrl,
       profileImageFileId: form.profileImageFileId,
@@ -209,9 +215,26 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
       }
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.localized(locale) : t("common.error"));
+      setError(err instanceof ApiError ? err.detailedMessage(locale, FIELD_LABELS) : t("common.error"));
     }
   }
+
+  const FIELD_LABELS: Record<string, string> = {
+    firstName: t("users.f.firstName"),
+    firstNameCyrillic: t("users.f.firstNameCyrillic"),
+    lastName: t("users.f.lastName"),
+    lastNameCyrillic: t("users.f.lastNameCyrillic"),
+    middleName: t("users.f.middleName"),
+    middleNameCyrillic: t("users.f.middleNameCyrillic"),
+    birthDate: t("users.f.birthDate"),
+    documentNumber: t("users.f.documentNumber"),
+    gender: t("users.f.gender"),
+    phone: t("users.f.phone"),
+    pinfl: t("users.f.pinfl"),
+    roleNames: t("users.f.role"),
+    role: t("users.f.role"),
+    email: t("users.f.email"),
+  };
 
   async function handlePasswordSave() {
     if (!user) return;
@@ -434,9 +457,10 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
             <Field label={`${t("users.f.role")} *`} htmlFor="u-role">
               <Select
                 id="u-role"
-                value={form.role}
-                onChange={(e) => set("role", e.target.value as UserRole)}
+                value={form.roleName}
+                onChange={(e) => set("roleName", e.target.value)}
                 options={roleOptions}
+                placeholder={t("users.f.rolePlaceholder")}
               />
             </Field>
             <Field label={t("users.f.pinfl")} htmlFor="u-pinfl">
@@ -453,7 +477,7 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
         </section>
 
         {error && (
-          <p className="rounded-lg bg-negative/10 px-3 py-2 text-sm text-negative">{error}</p>
+          <p className="whitespace-pre-line rounded-lg bg-negative/10 px-3 py-2 text-sm text-negative">{error}</p>
         )}
       </form>
 

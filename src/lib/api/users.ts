@@ -103,7 +103,10 @@ export interface UserInput {
   documentNumber?: string;
   gender: UserGender;
   phone?: string;
-  role: UserRole;
+  /** Management enum role (legacy). Prefer `roleNames` to assign any DB role. */
+  role?: UserRole;
+  /** Actual role names from the roles table — lets the form offer every role. */
+  roleNames?: string[];
   pinfl?: string;
 }
 

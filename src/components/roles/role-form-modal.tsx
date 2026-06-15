@@ -27,6 +27,22 @@ function loc(label: LocalizedLabel, locale: Locale): string {
   return label[locale] || label.uz;
 }
 
+/**
+ * Derive a machine-safe role `name` (latin/digits/dashes) from the human display
+ * text, so Uzbek/Cyrillic/apostrophe names pass the backend name regex.
+ */
+function slugifyRoleName(display: string): string {
+  const slug = display
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/['’‘ʻ`]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug.length >= 2 ? slug.slice(0, 80) : `role-${Date.now().toString(36)}`;
+}
+
 function codesInCategory(category: CatalogCategory): string[] {
   return category.resources.flatMap((r) => r.permissions.map((p) => p.code));
 }
@@ -167,20 +183,29 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
     }
 
     const permissionCodes = Array.from(selected);
+    const display = name.trim();
     try {
       if (role) {
         const payload: Partial<RoleInput> = { permissionCodes };
-        if (!role.isSystem && name.trim() !== role.displayName) {
-          payload.name = name.trim();
+        // System role names are locked; only the display title/permissions change.
+        if (!role.isSystem && display !== role.displayName) {
+          payload.name = slugifyRoleName(display);
+          payload.title = { uz: display };
         }
         await update.mutateAsync({ id: role.id, input: payload });
       } else {
-        const payload: RoleInput = { name: name.trim(), permissionCodes };
+        // The backend `name` is a machine code (latin/digits/dashes only), so the
+        // human (Uzbek/Cyrillic/apostrophe) text is sent as the localized title.
+        const payload: RoleInput = {
+          name: slugifyRoleName(display),
+          title: { uz: display },
+          permissionCodes,
+        };
         await create.mutateAsync(payload);
       }
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.localized(locale) : t("common.error"));
+      setError(err instanceof ApiError ? err.detailedMessage(locale) : t("common.error"));
     }
   }
 
