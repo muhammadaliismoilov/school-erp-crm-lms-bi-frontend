@@ -21,7 +21,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { DateInput } from "@/components/ui/date-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
@@ -31,6 +31,31 @@ import { LeadFormDrawer } from "@/components/crm/lead-form-drawer";
 import { LeadDetailDrawer } from "@/components/crm/lead-detail-drawer";
 import { LeadEnrollDrawer } from "@/components/crm/lead-enroll-drawer";
 import { formatMoney } from "@/lib/utils";
+
+const DATE_PRESETS = ["today", "week", "days10", "month"] as const;
+type DatePreset = (typeof DATE_PRESETS)[number];
+
+function isoDay(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Map a preset to an inclusive [from, to] ISO range, ending today. */
+function presetRange(preset: DatePreset): { from: string; to: string } {
+  const today = new Date();
+  const to = isoDay(today);
+  const f = new Date(today);
+  if (preset === "today") return { from: to, to };
+  if (preset === "days10") {
+    f.setDate(f.getDate() - 9);
+    return { from: isoDay(f), to };
+  }
+  if (preset === "week") {
+    const mondayOffset = (today.getDay() + 6) % 7; // Mon=0 … Sun=6
+    f.setDate(f.getDate() - mondayOffset);
+    return { from: isoDay(f), to };
+  }
+  return { from: isoDay(new Date(today.getFullYear(), today.getMonth(), 1)), to }; // month
+}
 
 const STATUS_TONE: Record<LeadStatus, "accent" | "neutral" | "caution" | "positive" | "negative"> = {
   new: "accent",
@@ -77,8 +102,22 @@ export default function LeadsPage() {
   const [taskFilter, setTaskFilter] = useState<LeadTaskFilter | "">("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [datePreset, setDatePreset] = useState<DatePreset | "">("");
   const [tagId, setTagId] = useState("");
   const [page, setPage] = useState(1);
+
+  const applyPreset = (p: DatePreset | "") => {
+    setDatePreset(p);
+    setPage(1);
+    if (!p) {
+      setDateFrom("");
+      setDateTo("");
+      return;
+    }
+    const r = presetRange(p);
+    setDateFrom(r.from);
+    setDateTo(r.to);
+  };
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Lead | null>(null);
@@ -95,6 +134,7 @@ export default function LeadsPage() {
     setTaskFilter("");
     setDateFrom("");
     setDateTo("");
+    setDatePreset("");
     setTagId("");
     setSearch("");
     setPage(1);
@@ -152,6 +192,10 @@ export default function LeadsPage() {
   const tagOptions = [
     { value: "", label: t("crm.lead.allTags") },
     ...(tags.data ?? []).map((tg) => ({ value: tg.id, label: tg.name })),
+  ];
+  const datePresetOptions = [
+    { value: "", label: t("crm.dateRange.all") },
+    ...DATE_PRESETS.map((p) => ({ value: p, label: t(`crm.dateRange.${p}`) })),
   ];
 
   const openCreate = () => {
@@ -276,11 +320,14 @@ export default function LeadsPage() {
         <div className="w-44">
           <Select value={taskFilter} onChange={(e) => { setTaskFilter(e.target.value as LeadTaskFilter | ""); setPage(1); }} options={taskFilterOptions} />
         </div>
-        <div className="w-36">
-          <DateInput value={dateFrom} onChange={(iso) => { setDateFrom(iso); setPage(1); }} placeholder={t("crm.lead.dateFrom")} />
+        <div className="w-40">
+          <Select value={datePreset} onChange={(e) => applyPreset(e.target.value as DatePreset | "")} options={datePresetOptions} />
         </div>
         <div className="w-36">
-          <DateInput value={dateTo} onChange={(iso) => { setDateTo(iso); setPage(1); }} placeholder={t("crm.lead.dateTo")} />
+          <DatePicker value={dateFrom} onChange={(iso) => { setDateFrom(iso); setDatePreset(""); setPage(1); }} placeholder={t("crm.lead.dateFrom")} max={dateTo || undefined} />
+        </div>
+        <div className="w-36">
+          <DatePicker value={dateTo} onChange={(iso) => { setDateTo(iso); setDatePreset(""); setPage(1); }} placeholder={t("crm.lead.dateTo")} min={dateFrom || undefined} />
         </div>
         <div className="w-40">
           <Select value={sourceId} onChange={(e) => { setSourceId(e.target.value); setPage(1); }} options={sourceOptions} />

@@ -29,6 +29,7 @@ import {
   CalendarClock,
   Clock,
   Blocks,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -135,6 +136,7 @@ export const NAV_ITEMS: NavEntry[] = [
     permission: "crm.read",
     children: [
       { href: "/crm/leads", labelKey: "nav.crm.leads", icon: Users, permission: "crm.read" },
+      { href: "/crm/referrals", labelKey: "nav.crm.referrals", icon: Link2, permission: "crm.read" },
       { href: "/crm/sources", labelKey: "nav.crm.sources", icon: Blocks, permission: "crm.read" },
     ],
   },

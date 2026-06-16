@@ -58,6 +58,12 @@ export function TimeInput({
     onChange(joinTime(nextHour, nextMinute));
   }
 
+  // Picking one part while the other is empty auto-fills the counterpart to
+  // "00" so a complete HH:mm forms immediately (visible + saved). Clearing a
+  // part (value "") never forces the other.
+  const onHour = (next: string) => commit(next, next && !minute ? "00" : minute);
+  const onMinute = (next: string) => commit(next && !hour ? "00" : hour, next);
+
   return (
     <div className="flex items-end gap-2">
       <div className="flex-1">
@@ -66,7 +72,7 @@ export function TimeInput({
           id={idPrefix ? `${idPrefix}-hour` : undefined}
           value={hour}
           disabled={disabled}
-          onChange={(e) => commit(e.target.value, minute)}
+          onChange={(e) => onHour(e.target.value)}
           options={hours}
           placeholder="--"
         />
@@ -78,7 +84,7 @@ export function TimeInput({
           id={idPrefix ? `${idPrefix}-minute` : undefined}
           value={minute}
           disabled={disabled}
-          onChange={(e) => commit(hour, e.target.value)}
+          onChange={(e) => onMinute(e.target.value)}
           options={minutes}
           placeholder="--"
         />

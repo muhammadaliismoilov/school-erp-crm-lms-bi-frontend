@@ -39,6 +39,7 @@ export function LeadComments({ leadId, canManage }: { leadId: string; canManage:
   const [remindTime, setRemindTime] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
+  const [pinnedOnly, setPinnedOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function buildRemindAt(): string | undefined {
@@ -72,15 +73,39 @@ export function LeadComments({ leadId, canManage }: { leadId: string; canManage:
     }
   }
 
-  const list = comments.data ?? [];
+  const all = comments.data ?? [];
+  const pinnedCount = all.filter((c) => c.isPinned).length;
+  const list = pinnedOnly ? all.filter((c) => c.isPinned) : all;
 
   return (
     <div>
-      <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
-        <MessageSquarePlus className="h-4 w-4 text-ink-muted" />
-        {t("crm.comments.title")}
-        {list.length > 0 && <span className="text-ink-muted tnum">({list.length})</span>}
-      </p>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+          <MessageSquarePlus className="h-4 w-4 text-ink-muted" />
+          {t("crm.comments.title")}
+          {all.length > 0 && <span className="text-ink-muted tnum">({all.length})</span>}
+        </p>
+        {pinnedCount > 0 && (
+          <div className="inline-flex rounded-lg border border-line bg-surface p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setPinnedOnly(false)}
+              className={`rounded-md px-2 py-1 font-medium transition ${pinnedOnly ? "text-ink-soft" : "bg-accent text-accent-fg"}`}
+            >
+              {t("crm.comments.filterAll")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPinnedOnly(true)}
+              className={`inline-flex items-center gap-1 rounded-md px-2 py-1 font-medium transition ${pinnedOnly ? "bg-amber text-white" : "text-ink-soft"}`}
+            >
+              <Pin className="h-3 w-3" />
+              {t("crm.comments.filterPinned")}
+              <span className="tnum">({pinnedCount})</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {canManage && (
         <form onSubmit={submitAdd} className="mb-4 space-y-2 rounded-xl border border-line p-3">
