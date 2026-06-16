@@ -7,6 +7,7 @@ const lead = (id: string, status: Lead["status"]): Lead => ({
   fullName: "A",
   phone: "+998901234567",
   status,
+  tags: [],
 });
 
 describe("groupLeadsByStatus", () => {

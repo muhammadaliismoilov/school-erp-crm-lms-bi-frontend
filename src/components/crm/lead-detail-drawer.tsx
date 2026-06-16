@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Info, Pencil, Trash2 } from "lucide-react";
+import { Clock, GraduationCap, Info, Pencil, Trash2 } from "lucide-react";
 import {
   LEAD_STATUSES,
   leadHistoryActionKey,
@@ -16,6 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { Select } from "@/components/ui/select";
 import { isoToDMY } from "@/lib/format";
+import { LeadComments } from "@/components/crm/lead-comments";
+import { LeadTagPicker } from "@/components/crm/lead-tag-picker";
 
 interface Props {
   open: boolean;
@@ -23,6 +25,7 @@ interface Props {
   onClose: () => void;
   onEdit: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
+  onEnroll: (lead: Lead) => void;
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -34,7 +37,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete }: Props) {
+export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete, onEnroll }: Props) {
   const { t } = useI18n();
   const can = useAuthStore((s) => s.can);
   const canManage = can("crm.manage");
@@ -90,6 +93,22 @@ export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete }: Pr
             </div>
           )}
 
+          {/* Muvaffaqiyatli (shartnoma) lid → o'quvchiga aylantirish */}
+          {data.status === "contract" &&
+            (data.enrolledStudentId ? (
+              <div className="flex items-center gap-2 rounded-xl border border-positive/30 bg-positive/8 px-4 py-3 text-sm text-positive">
+                <GraduationCap className="h-4 w-4" />
+                {t("crm.enroll.alreadyEnrolled")}
+              </div>
+            ) : (
+              canManage && (
+                <Button className="w-full" onClick={() => onEnroll(data)}>
+                  <GraduationCap className="h-4 w-4" />
+                  {t("crm.enroll.button")}
+                </Button>
+              )
+            ))}
+
           <div className="grid grid-cols-2 gap-4 rounded-xl border border-line p-4">
             <InfoRow label={t("crm.lead.email")} value={data.email || "—"} />
             <InfoRow label={t("crm.lead.source")} value={data.source?.name || "—"} />
@@ -99,6 +118,10 @@ export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete }: Pr
               <InfoRow label={t("crm.lead.notes")} value={data.notes || "—"} />
             </div>
           </div>
+
+          {canManage && <LeadTagPicker leadId={data.id} selected={data.tags ?? []} />}
+
+          <LeadComments leadId={data.id} canManage={canManage} />
 
           <div>
             <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">

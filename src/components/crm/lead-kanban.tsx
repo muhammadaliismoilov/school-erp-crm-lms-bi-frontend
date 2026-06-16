@@ -83,11 +83,22 @@ export function LeadKanban({ leads, stats, onOpen, onMove, canManage }: Props) {
               >
                 <p className="text-sm font-medium text-ink">{lead.fullName}</p>
                 <p className="mt-0.5 text-xs text-ink-muted tnum">{lead.phone}</p>
-                {lead.source && (
-                  <span className="mt-1.5 inline-block rounded bg-parchment/60 px-1.5 py-0.5 text-[11px] text-ink-soft">
-                    {lead.source.name}
-                  </span>
-                )}
+                <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                  {lead.source && (
+                    <span className="inline-block rounded bg-parchment/60 px-1.5 py-0.5 text-[11px] text-ink-soft">
+                      {lead.source.name}
+                    </span>
+                  )}
+                  {(lead.tags ?? []).map((tag) => (
+                    <span
+                      key={tag.id}
+                      className="inline-block rounded px-1.5 py-0.5 text-[11px] font-medium"
+                      style={{ backgroundColor: `${tag.color || "#f59e0b"}1f`, color: tag.color || "#f59e0b" }}
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
               </button>
             ))}
             {groups[status].length === 0 && (

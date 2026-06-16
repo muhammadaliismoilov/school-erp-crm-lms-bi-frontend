@@ -1,22 +1,27 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LayoutGrid, List, Phone, Plus, Search, Trash2, Users } from "lucide-react";
+import { FilterX, LayoutGrid, List, Phone, Plus, Search, Trash2, Users } from "lucide-react";
 import {
   LEAD_STATUSES,
+  LEAD_TASK_FILTERS,
   useDeleteLead,
   useLeadSources,
+  useLeadTags,
   useLeads,
   useMoveLead,
   type Lead,
   type LeadStatus,
+  type LeadTaskFilter,
 } from "@/lib/api/crm";
+import { useUsers } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/types";
 import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
@@ -24,6 +29,7 @@ import { Select } from "@/components/ui/select";
 import { LeadKanban } from "@/components/crm/lead-kanban";
 import { LeadFormDrawer } from "@/components/crm/lead-form-drawer";
 import { LeadDetailDrawer } from "@/components/crm/lead-detail-drawer";
+import { LeadEnrollDrawer } from "@/components/crm/lead-enroll-drawer";
 import { formatMoney } from "@/lib/utils";
 
 const STATUS_TONE: Record<LeadStatus, "accent" | "neutral" | "caution" | "positive" | "negative"> = {
@@ -67,34 +73,65 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
   const [sourceId, setSourceId] = useState("");
+  const [assignedToId, setAssignedToId] = useState("");
+  const [taskFilter, setTaskFilter] = useState<LeadTaskFilter | "">("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [tagId, setTagId] = useState("");
   const [page, setPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Lead | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Lead | null>(null);
+  const [enrolling, setEnrolling] = useState<Lead | null>(null);
+  const [enrolledCode, setEnrolledCode] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const resetFilters = () => {
+    setStatusFilter("");
+    setSourceId("");
+    setAssignedToId("");
+    setTaskFilter("");
+    setDateFrom("");
+    setDateTo("");
+    setTagId("");
+    setSearch("");
+    setPage(1);
+  };
 
   const filters = useMemo(
     () => ({
       search: search || undefined,
       status: statusFilter || undefined,
       sourceId: sourceId || undefined,
+      assignedToId: assignedToId || undefined,
+      taskFilter: taskFilter || undefined,
+      // DateInput emits ISO yyyy-mm-dd; widen the upper bound to end-of-day.
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo ? `${dateTo}T23:59:59` : undefined,
+      tagIds: tagId ? [tagId] : undefined,
       page,
       // Kanban groups all fetched leads; table paginates. The backend caps the
       // page size at 100, so the kanban uses the max allowed limit.
       limit: view === "kanban" ? 100 : 20,
     }),
-    [search, statusFilter, sourceId, page, view],
+    [search, statusFilter, sourceId, assignedToId, taskFilter, dateFrom, dateTo, tagId, page, view],
   );
 
   const { data, isLoading, isError, refetch } = useLeads(filters);
   const sources = useLeadSources();
+  const tags = useLeadTags();
+  const managers = useUsers({ limit: 100 });
   const move = useMoveLead();
   const remove = useDeleteLead();
 
   const stats = data?.stats;
   const rows = data?.items ?? [];
+
+  const hasActiveFilters = Boolean(
+    statusFilter || sourceId || assignedToId || taskFilter || dateFrom || dateTo || tagId || search,
+  );
 
   const sourceOptions = [
     { value: "", label: t("crm.lead.allSources") },
@@ -103,6 +140,18 @@ export default function LeadsPage() {
   const statusFilterOptions = [
     { value: "", label: t("crm.lead.allStatuses") },
     ...LEAD_STATUSES.map((s) => ({ value: s, label: t(`crm.status.${s}`) })),
+  ];
+  const managerOptions = [
+    { value: "", label: t("crm.lead.allManagers") },
+    ...(managers.data?.items ?? []).map((u) => ({ value: u.id, label: u.fullName })),
+  ];
+  const taskFilterOptions = [
+    { value: "", label: t("crm.lead.allTasks") },
+    ...LEAD_TASK_FILTERS.map((tf) => ({ value: tf, label: t(`crm.taskFilter.${tf}`) })),
+  ];
+  const tagOptions = [
+    { value: "", label: t("crm.lead.allTags") },
+    ...(tags.data ?? []).map((tg) => ({ value: tg.id, label: tg.name })),
   ];
 
   const openCreate = () => {
@@ -214,12 +263,37 @@ export default function LeadsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder={t("crm.leads.searchPlaceholder")} className="pl-9" />
         </div>
-        <div className="w-44">
+      </div>
+
+      {/* Filtrlar qatori (rasmdagidek) */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="w-40">
           <Select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as LeadStatus | ""); setPage(1); }} options={statusFilterOptions} />
         </div>
         <div className="w-44">
+          <Select value={assignedToId} onChange={(e) => { setAssignedToId(e.target.value); setPage(1); }} options={managerOptions} />
+        </div>
+        <div className="w-44">
+          <Select value={taskFilter} onChange={(e) => { setTaskFilter(e.target.value as LeadTaskFilter | ""); setPage(1); }} options={taskFilterOptions} />
+        </div>
+        <div className="w-36">
+          <DateInput value={dateFrom} onChange={(iso) => { setDateFrom(iso); setPage(1); }} placeholder={t("crm.lead.dateFrom")} />
+        </div>
+        <div className="w-36">
+          <DateInput value={dateTo} onChange={(iso) => { setDateTo(iso); setPage(1); }} placeholder={t("crm.lead.dateTo")} />
+        </div>
+        <div className="w-40">
           <Select value={sourceId} onChange={(e) => { setSourceId(e.target.value); setPage(1); }} options={sourceOptions} />
         </div>
+        <div className="w-40">
+          <Select value={tagId} onChange={(e) => { setTagId(e.target.value); setPage(1); }} options={tagOptions} />
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={resetFilters} className="text-ink-muted">
+            <FilterX className="h-4 w-4" />
+            {t("crm.lead.clearFilters")}
+          </Button>
+        )}
       </div>
 
       {actionError && <p className="mb-3 rounded-lg bg-negative/10 px-3 py-2 text-sm text-negative">{actionError}</p>}
@@ -254,7 +328,28 @@ export default function LeadsPage() {
         onClose={() => setDetailId(null)}
         onEdit={openEdit}
         onDelete={(l) => setDeleting(l)}
+        onEnroll={(l) => { setDetailId(null); setEnrolling(l); }}
       />
+      <LeadEnrollDrawer
+        open={Boolean(enrolling)}
+        lead={enrolling}
+        onClose={() => setEnrolling(null)}
+        onEnrolled={(code) => setEnrolledCode(code)}
+      />
+
+      <Modal
+        open={Boolean(enrolledCode)}
+        onClose={() => setEnrolledCode(null)}
+        size="md"
+        title={t("crm.enroll.successTitle")}
+        footer={
+          <Button onClick={() => setEnrolledCode(null)}>{t("common.ok")}</Button>
+        }
+      >
+        <p className="text-sm text-ink-soft">
+          {t("crm.enroll.successBody")} <span className="font-medium text-ink tnum">{enrolledCode}</span>
+        </p>
+      </Modal>
 
       <Modal
         open={Boolean(deleting)}
