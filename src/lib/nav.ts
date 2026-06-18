@@ -30,6 +30,7 @@ import {
   Clock,
   Blocks,
   Link2,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -138,6 +139,7 @@ export const NAV_ITEMS: NavEntry[] = [
       { href: "/crm/leads", labelKey: "nav.crm.leads", icon: Users, permission: "crm.read" },
       { href: "/crm/referrals", labelKey: "nav.crm.referrals", icon: Link2, permission: "crm.read" },
       { href: "/crm/sources", labelKey: "nav.crm.sources", icon: Blocks, permission: "crm.read" },
+      { href: "/crm/stats", labelKey: "nav.crm.statistics", icon: BarChart3, permission: "crm.read" },
     ],
   },
   MANAGEMENT_GROUP,
