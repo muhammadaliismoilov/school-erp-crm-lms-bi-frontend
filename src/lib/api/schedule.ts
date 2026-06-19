@@ -172,6 +172,19 @@ export function historyActionKey(action: string): string {
 
 const GRID_KEY = ["schedule", "grid"] as const;
 
+export interface ScheduleTeacher {
+  id: string;
+  fullName: string;
+}
+
+export function useScheduleTeachers() {
+  return useQuery({
+    queryKey: ["schedule", "teachers"],
+    queryFn: () => apiRequest<{ items: ScheduleTeacher[] }>("/lms/lessons/teachers"),
+    staleTime: 60_000,
+  });
+}
+
 export function useScheduleClasses(quarterId?: string) {
   return useQuery({
     queryKey: ["schedule", "classes", quarterId],

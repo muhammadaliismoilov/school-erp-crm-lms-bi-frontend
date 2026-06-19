@@ -9,10 +9,10 @@ import { cn, loc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/provider";
 import { useQuarters, useSubjects } from "@/lib/api/academic";
 import { useRooms } from "@/lib/api/rooms";
-import { useUsers } from "@/lib/api/users";
 import { useCourseList } from "@/lib/api/courses";
 import {
   useScheduleClasses,
+  useScheduleTeachers,
   useScheduleGrid,
   useTeacherGrid,
   useDeleteCell,
@@ -54,7 +54,7 @@ export default function SchedulePage() {
   const { data: classes } = useScheduleClasses(quarterId);
   const { data: subjects } = useSubjects();
   const { data: rooms } = useRooms();
-  const { data: teachers } = useUsers({ page: 1, limit: 200 });
+  const { data: teachers } = useScheduleTeachers();
   const { data: courses } = useCourseList({ limit: 200 });
 
   const classGrid = useScheduleGrid(quarterId, tab !== "teacher" ? classId : undefined);
