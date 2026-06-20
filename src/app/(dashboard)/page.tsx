@@ -98,7 +98,7 @@ export default function DashboardPage() {
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {[
-              ["O‘quvchi qo‘shish", "/students/new", "students.manage"],
+              ["O‘quvchi qo‘shish", "/students", "students.manage"],
               ["O‘quvchilar ro‘yxati", "/students", "students.read"],
               ["Qabul / Lidlar", "/crm", "crm.read"],
               ["Moliya / Shartnomalar", "/finance", "finance.read"],

@@ -1,0 +1,330 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { GraduationCap } from "lucide-react";
+import {
+  useCreateStudent,
+  useUpdateStudent,
+  type ExtraDocuments,
+  type Student,
+  type StudentInput,
+} from "@/lib/api/students";
+import { useClassList } from "@/lib/api/classes";
+import { ApiError } from "@/lib/api/types";
+import { useI18n } from "@/lib/i18n/provider";
+import { Button } from "@/components/ui/button";
+import { Drawer } from "@/components/ui/drawer";
+import { Field, Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
+import { Select } from "@/components/ui/select";
+
+interface FormValues {
+  lastName: string;
+  firstName: string;
+  middleName: string;
+  birthDate: string;
+  nationalId: string;
+  gender: "" | "male" | "female";
+  preferredLanguage: "uz" | "ru" | "en";
+  currentClassId: string;
+  studentCode: string;
+  contractNumber: string;
+  region: string;
+  district: string;
+  address: string;
+  discountPercent: number;
+}
+
+const EXTRA_DOCS: { key: keyof ExtraDocuments; label: string }[] = [
+  { key: "tabelGuvohnoma", label: "Tabel guvohnomasi" },
+  { key: "passportNusxa", label: "Ota-onaning passport nusxasi" },
+  { key: "tibbiyDaftarcha", label: "Tibbiy ko‘rik daftarchasi" },
+  { key: "rasmlar", label: "Rasmlar" },
+  { key: "baholarVaraqasi", label: "Baholar varaqasi" },
+];
+
+const LANGUAGES = [
+  { value: "uz", label: "O‘zbek" },
+  { value: "ru", label: "Rus" },
+  { value: "en", label: "Ingliz" },
+];
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  /** Tahrirlash uchun mavjud o‘quvchi; bo‘sh bo‘lsa — yangi yaratish. */
+  student?: Student | null;
+  onSaved?: () => void;
+}
+
+function toDefaults(student?: Student | null): FormValues {
+  return {
+    lastName: student?.lastName ?? "",
+    firstName: student?.firstName ?? "",
+    middleName: student?.middleName ?? "",
+    birthDate: student?.birthDate ?? "",
+    nationalId: student?.nationalId ?? "",
+    gender: (student?.gender as FormValues["gender"]) ?? "",
+    preferredLanguage: (student?.preferredLanguage as FormValues["preferredLanguage"]) ?? "uz",
+    currentClassId: student?.currentClassId ?? "",
+    studentCode: student?.studentCode ?? "",
+    contractNumber: student?.contractNumber ?? "",
+    region: student?.region ?? "",
+    district: student?.district ?? "",
+    address: student?.address ?? "",
+    discountPercent: Number(student?.discountPercent ?? 0),
+  };
+}
+
+export function StudentFormDrawer({ open, onClose, student, onSaved }: Props) {
+  const { t, locale } = useI18n();
+  const isEdit = Boolean(student);
+  const createStudent = useCreateStudent();
+  const updateStudent = useUpdateStudent();
+  const { data: classData } = useClassList();
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [extraDocs, setExtraDocs] = useState<ExtraDocuments>({});
+
+  const classOptions = useMemo(() => {
+    const items = classData?.items ?? [];
+    return [...items]
+      .sort((a, b) => a.gradeLevel - b.gradeLevel || a.section.localeCompare(b.section))
+      .map((c) => ({ value: c.id, label: `${c.gradeLevel}-${c.section}` }));
+  }, [classData]);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({ defaultValues: toDefaults(student) });
+
+  useEffect(() => {
+    if (open) {
+      reset(toDefaults(student));
+      setExtraDocs(student?.extraDocuments ?? {});
+      setServerError(null);
+    }
+  }, [open, student, reset]);
+
+  async function onSubmit(values: FormValues) {
+    setServerError(null);
+    const input: StudentInput = {
+      firstName: values.firstName.trim(),
+      lastName: values.lastName.trim(),
+      middleName: values.middleName.trim() || undefined,
+      birthDate: values.birthDate || undefined,
+      nationalId: values.nationalId.trim() || undefined,
+      gender: values.gender || undefined,
+      preferredLanguage: values.preferredLanguage,
+      currentClassId: values.currentClassId || undefined,
+      studentCode: values.studentCode.trim().toUpperCase() || undefined,
+      contractNumber: values.contractNumber.trim() || undefined,
+      region: values.region.trim() || undefined,
+      district: values.district.trim() || undefined,
+      address: values.address.trim() || undefined,
+      discountPercent: Number(values.discountPercent) || 0,
+      extraDocuments: extraDocs,
+    };
+
+    try {
+      if (isEdit && student) {
+        await updateStudent.mutateAsync({ id: student.id, input });
+      } else {
+        await createStudent.mutateAsync(input);
+      }
+      onSaved?.();
+      onClose();
+    } catch (error) {
+      setServerError(
+        error instanceof ApiError ? error.localized(locale) : t("common.error"),
+      );
+    }
+  }
+
+  function toggleDoc(key: keyof ExtraDocuments) {
+    setExtraDocs((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "O‘quvchini tahrirlash" : "O‘quvchi qo‘shish"}
+      subtitle="To‘liq profil ma'lumotlarini kiriting"
+      icon={<GraduationCap className="h-5 w-5" />}
+      footer={
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button type="submit" form="student-form" loading={isSubmitting}>
+            {isEdit ? t("common.save") : "Yaratish"}
+          </Button>
+        </div>
+      }
+    >
+      <form id="student-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Umumiy */}
+        <Section title="Umumiy">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Familiya" htmlFor="lastName" error={errors.lastName && "Majburiy"}>
+              <Input id="lastName" {...register("lastName", { required: true, maxLength: 80 })} />
+            </Field>
+            <Field label="Ism" htmlFor="firstName" error={errors.firstName && "Majburiy"}>
+              <Input id="firstName" {...register("firstName", { required: true, maxLength: 80 })} />
+            </Field>
+          </div>
+          <Field label="Otasining ismi" htmlFor="middleName">
+            <Input id="middleName" {...register("middleName", { maxLength: 80 })} />
+          </Field>
+        </Section>
+
+        {/* Asosiy */}
+        <Section title="Asosiy ma'lumotlar">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Tug‘ilgan sana" htmlFor="birthDate">
+              <Controller
+                control={control}
+                name="birthDate"
+                render={({ field }) => (
+                  <DateInput id="birthDate" value={field.value ?? ""} onChange={field.onChange} />
+                )}
+              />
+            </Field>
+            <Field label="Hujjat raqami (JSHSHIR)" htmlFor="nationalId">
+              <Input id="nationalId" {...register("nationalId", { maxLength: 32 })} />
+            </Field>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Jinsi" htmlFor="gender">
+              <Select
+                id="gender"
+                placeholder="—"
+                options={[
+                  { value: "male", label: "Erkak" },
+                  { value: "female", label: "Ayol" },
+                ]}
+                {...register("gender")}
+              />
+            </Field>
+            <Field label="Tanlangan til" htmlFor="preferredLanguage">
+              <Select id="preferredLanguage" options={LANGUAGES} {...register("preferredLanguage")} />
+            </Field>
+          </div>
+        </Section>
+
+        {/* O'qish */}
+        <Section title="O‘qish ma'lumotlari">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Sinf" htmlFor="currentClassId">
+              <Select
+                id="currentClassId"
+                placeholder="Sinf tanlang"
+                options={classOptions}
+                {...register("currentClassId")}
+              />
+            </Field>
+            <Field label="ID raqam" htmlFor="studentCode">
+              <Input
+                id="studentCode"
+                placeholder="Avtomatik (ST-2026-...)"
+                className="font-mono uppercase"
+                {...register("studentCode", { pattern: /^[A-Za-z0-9-]{3,40}$/ })}
+              />
+            </Field>
+          </div>
+          <Field label="Shartnoma raqami" htmlFor="contractNumber">
+            <Input id="contractNumber" {...register("contractNumber", { maxLength: 60 })} />
+          </Field>
+        </Section>
+
+        {/* Manzil */}
+        <Section title="Manzil">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Shahar / viloyat" htmlFor="region">
+              <Input id="region" {...register("region", { maxLength: 80 })} />
+            </Field>
+            <Field label="Tuman" htmlFor="district">
+              <Input id="district" {...register("district", { maxLength: 80 })} />
+            </Field>
+          </div>
+          <Field label="To‘liq manzil" htmlFor="address">
+            <Input id="address" {...register("address", { maxLength: 500 })} />
+          </Field>
+        </Section>
+
+        {/* Chegirma */}
+        <Section title="Chegirma">
+          <Controller
+            control={control}
+            name="discountPercent"
+            render={({ field }) => (
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={field.value}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-line accent-accent"
+                />
+                <span className="w-14 text-right font-display text-lg font-semibold text-accent tnum">
+                  {field.value}%
+                </span>
+              </div>
+            )}
+          />
+        </Section>
+
+        {/* Qo'shimcha hujjatlar */}
+        <Section title="Qo‘shimcha hujjatlar">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {EXTRA_DOCS.map((doc) => {
+              const checked = Boolean(extraDocs[doc.key]);
+              return (
+                <button
+                  key={doc.key}
+                  type="button"
+                  onClick={() => toggleDoc(doc.key)}
+                  className={`flex items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors ${
+                    checked
+                      ? "border-accent/40 bg-accent/10 text-ink"
+                      : "border-line bg-surface text-ink-muted hover:border-accent/30"
+                  }`}
+                >
+                  <span
+                    className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${
+                      checked ? "border-accent bg-accent text-white" : "border-line"
+                    }`}
+                  >
+                    {checked && "✓"}
+                  </span>
+                  {doc.label}
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+
+        {serverError && (
+          <p className="rounded-lg border border-negative/30 bg-negative/8 px-3 py-2 text-sm text-negative">
+            {serverError}
+          </p>
+        )}
+      </form>
+    </Drawer>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h4 className="label border-b border-line pb-1.5">{title}</h4>
+      {children}
+    </section>
+  );
+}
