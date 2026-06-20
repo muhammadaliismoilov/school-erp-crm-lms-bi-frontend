@@ -12,6 +12,7 @@ export default function StateExamPage() {
       subtitle="Davlat (yakuniy) imtihonlari"
       queryKey="lms-exams-state"
       path="/lms/exams"
+      query={{ limit: 100 }}
       columns={examColumns}
       searchFields={["title"]}
       filter={(r) => String(r.status) === "finished" || String(r.status) === "scheduled"}
