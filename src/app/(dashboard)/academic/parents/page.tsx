@@ -57,7 +57,13 @@ const PAGE_SIZE = 20;
 export default function ParentsPage() {
   const router = useRouter();
   const can = useAuthStore((s) => s.can);
-  const canManage = can("users.manage");
+  // Gate each action on the permission its backend endpoint actually requires
+  // (there is no "users.manage" permission — that left the menu hidden for
+  // every non-superadmin role).
+  const canCreate = can("users.create");
+  const canUpdate = can("users.update");
+  const canUnlink = can("students.manage");
+  const canManage = canUpdate || canUnlink;
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -164,7 +170,7 @@ export default function ParentsPage() {
             <Button variant="secondary" onClick={exportCsv} disabled={rows.length === 0}>
               <Download className="h-4 w-4" /> Excel (CSV)
             </Button>
-            {canManage && (
+            {canCreate && (
               <Button onClick={openCreate}>
                 <Plus className="h-4 w-4" /> Ota-ona qo‘shish
               </Button>
@@ -334,44 +340,52 @@ export default function ParentsPage() {
                               >
                                 <Eye className="h-4 w-4 text-sky-500" /> Tafsilotlar
                               </button>
-                              <button
-                                role="menuitem"
-                                onClick={() => {
-                                  setResetFor(u);
-                                  setMenuFor(null);
-                                }}
-                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
-                              >
-                                <KeyRound className="h-4 w-4 text-amber-500" /> Parolni yangilash
-                              </button>
-                              <button
-                                role="menuitem"
-                                onClick={() => openEdit(u)}
-                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
-                              >
-                                <Pencil className="h-4 w-4 text-indigo-500" /> Tahrirlash
-                              </button>
-                              <div className="my-1 border-t border-line/70" />
-                              <button
-                                role="menuitem"
-                                onClick={() => {
-                                  setChildrenFor(u);
-                                  setMenuFor(null);
-                                }}
-                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-orange-600 hover:bg-orange-500/8"
-                              >
-                                <UserMinus className="h-4 w-4" /> O‘quvchini ajratish
-                              </button>
-                              <button
-                                role="menuitem"
-                                onClick={() => {
-                                  setDeleting(u);
-                                  setMenuFor(null);
-                                }}
-                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
-                              >
-                                <Trash2 className="h-4 w-4" /> O‘chirish
-                              </button>
+                              {canUpdate && (
+                                <button
+                                  role="menuitem"
+                                  onClick={() => {
+                                    setResetFor(u);
+                                    setMenuFor(null);
+                                  }}
+                                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                                >
+                                  <KeyRound className="h-4 w-4 text-amber-500" /> Parolni yangilash
+                                </button>
+                              )}
+                              {canUpdate && (
+                                <button
+                                  role="menuitem"
+                                  onClick={() => openEdit(u)}
+                                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                                >
+                                  <Pencil className="h-4 w-4 text-indigo-500" /> Tahrirlash
+                                </button>
+                              )}
+                              {(canUnlink || canUpdate) && <div className="my-1 border-t border-line/70" />}
+                              {canUnlink && (
+                                <button
+                                  role="menuitem"
+                                  onClick={() => {
+                                    setChildrenFor(u);
+                                    setMenuFor(null);
+                                  }}
+                                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-orange-600 hover:bg-orange-500/8"
+                                >
+                                  <UserMinus className="h-4 w-4" /> O‘quvchini ajratish
+                                </button>
+                              )}
+                              {canUpdate && (
+                                <button
+                                  role="menuitem"
+                                  onClick={() => {
+                                    setDeleting(u);
+                                    setMenuFor(null);
+                                  }}
+                                  className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
+                                >
+                                  <Trash2 className="h-4 w-4" /> O‘chirish
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

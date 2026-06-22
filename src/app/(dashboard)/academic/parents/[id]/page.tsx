@@ -21,7 +21,7 @@ export default function ParentDetailPage() {
   const id = params?.id ?? "";
   const router = useRouter();
   const can = useAuthStore((s) => s.can);
-  const canManage = can("users.manage");
+  const canManage = can("users.update");
 
   const [tab, setTab] = useState<TabKey>("info");
   const [editOpen, setEditOpen] = useState(false);
