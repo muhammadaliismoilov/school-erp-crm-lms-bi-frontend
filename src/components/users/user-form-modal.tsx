@@ -39,6 +39,7 @@ interface FormState {
   phone: string;
   roleName: string;
   pinfl: string;
+  workplace: string;
   profileImageUrl: string | null;
   profileImageFileId: string | null;
 }
@@ -56,6 +57,7 @@ const emptyForm: FormState = {
   phone: "",
   roleName: "",
   pinfl: "",
+  workplace: "",
   profileImageUrl: null,
   profileImageFileId: null,
 };
@@ -79,6 +81,7 @@ function fromUser(user: User): FormState {
     phone: user.phone ?? "",
     roleName: roleOf(user),
     pinfl: user.pinfl ?? "",
+    workplace: user.workplace ?? "",
     profileImageUrl: user.profileImageUrl ?? null,
     profileImageFileId: user.profileImageFileId ?? null,
   };
@@ -203,6 +206,7 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
       phone: trimmed(form.phone),
       roleNames: form.roleName ? [form.roleName] : undefined,
       pinfl: trimmed(form.pinfl),
+      workplace: trimmed(form.workplace),
       profileImageUrl: form.profileImageUrl,
       profileImageFileId: form.profileImageFileId,
     };
@@ -266,6 +270,7 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
     gender: t("users.f.gender"),
     phone: t("users.f.phone"),
     pinfl: t("users.f.pinfl"),
+    workplace: t("users.f.workplace"),
     roleNames: t("users.f.role"),
     role: t("users.f.role"),
     email: t("users.f.email"),
@@ -508,6 +513,15 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
                 placeholder={t("users.placeholder.pinfl")}
                 maxLength={14}
                 inputMode="numeric"
+              />
+            </Field>
+            <Field label={t("users.f.workplace")} htmlFor="u-workplace">
+              <Input
+                id="u-workplace"
+                value={form.workplace}
+                onChange={(e) => set("workplace", e.target.value)}
+                placeholder={t("users.placeholder.workplace")}
+                maxLength={160}
               />
             </Field>
           </div>

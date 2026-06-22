@@ -48,6 +48,7 @@ export interface User {
   phone?: string | null;
   email?: string | null;
   pinfl?: string | null;
+  workplace?: string | null;
   profileImageUrl?: string | null;
   profileImageFileId?: string | null;
   role?: string | null;
@@ -110,6 +111,8 @@ export interface UserInput {
   /** Actual role names from the roles table — lets the form offer every role. */
   roleNames?: string[];
   pinfl?: string;
+  /** Ish joyi — mainly used for parents. */
+  workplace?: string;
 }
 
 /** Matches UpdateUserDto — every field optional, plus status. */

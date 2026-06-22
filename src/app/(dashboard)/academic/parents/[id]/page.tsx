@@ -105,6 +105,8 @@ export default function ParentDetailPage({ params }: { params: Promise<{ id: str
                 { label: "Telefon", value: user.phone || "—" },
                 { label: "Email", value: user.email || "—" },
                 { label: "JSHSHIR", value: user.pinfl || "—" },
+                { label: "Hujjat raqami", value: user.documentNumber || "—" },
+                { label: "Ish joyi", value: user.workplace || "—" },
                 { label: "Login", value: user.login },
               ].map((row) => (
                 <div key={row.label} className="flex items-start justify-between gap-3 border-b border-line/50 pb-2">

@@ -48,6 +48,10 @@ const GENDER_TABS: { value: "" | UserGender; label: string }[] = [
   { value: "female", label: "Ayol" },
 ];
 
+const GENDER_LABEL: Record<string, string> = { male: "Erkak", female: "Ayol" };
+
+const PAGE_SIZE = 20;
+
 export default function ParentsPage() {
   const router = useRouter();
   const can = useAuthStore((s) => s.can);
@@ -126,14 +130,15 @@ export default function ParentsPage() {
   }
 
   function exportCsv() {
-    const header = ["F.I.O", "Login", "Telefon", "JSHSHIR", "Farzandlar"];
+    const header = ["F.I.SH", "Telefon", "Jinsi", "Farzandlar", "Ish joyi", "Hujjat raqami"];
     const lines = rows.map((r) =>
       [
         r.fullName,
-        r.login,
         r.phone ?? "",
-        r.pinfl ?? "",
+        r.gender ? GENDER_LABEL[r.gender] ?? r.gender : "",
         (childrenMap?.[r.id] ?? []).map(childName).join("; "),
+        r.workplace ?? "",
+        r.documentNumber ?? "",
       ]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(","),
@@ -222,18 +227,19 @@ export default function ParentsPage() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-line bg-parchment-deep/40">
-                <th className="label px-4 py-3 text-left">Ota-ona</th>
-                <th className="label px-4 py-3 text-left">Login</th>
-                <th className="label px-4 py-3 text-left">Telefon</th>
+                <th className="label px-4 py-3 text-left">№</th>
+                <th className="label px-4 py-3 text-left">F.I.SH</th>
+                <th className="label px-4 py-3 text-left">Jinsi</th>
                 <th className="label px-4 py-3 text-left">Farzandlari</th>
-                <th className="label px-4 py-3 text-left">JSHSHIR</th>
+                <th className="label px-4 py-3 text-left">Ish joyi</th>
+                <th className="label px-4 py-3 text-left">Hujjat raqami</th>
                 <th className="label px-4 py-3 text-right" />
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="py-16">
+                  <td colSpan={7} className="py-16">
                     <div className="grid place-items-center">
                       <Spinner className="h-6 w-6" />
                     </div>
@@ -243,7 +249,7 @@ export default function ParentsPage() {
 
               {!isLoading && isError && (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center">
+                  <td colSpan={7} className="py-16 text-center">
                     <p className="mb-3 text-sm text-ink-muted">Ma'lumotni yuklab bo‘lmadi</p>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>
                       Qayta urinish
@@ -254,13 +260,13 @@ export default function ParentsPage() {
 
               {!isLoading && !isError && rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center text-sm text-ink-muted">
+                  <td colSpan={7} className="py-16 text-center text-sm text-ink-muted">
                     Ota-onalar topilmadi
                   </td>
                 </tr>
               )}
 
-              {rows.map((u) => {
+              {rows.map((u, i) => {
                 const kids = childrenMap?.[u.id] ?? [];
                 return (
                   <tr
@@ -268,14 +274,23 @@ export default function ParentsPage() {
                     className="cursor-pointer border-b border-line/60 transition-colors last:border-0 hover:bg-parchment/50"
                     onClick={() => router.push(`/academic/parents/${u.id}`)}
                   >
+                    <td className="px-4 py-3 text-ink-muted tnum">{(page - 1) * PAGE_SIZE + i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <StudentAvatar name={u.fullName} seed={u.id} photoUrl={u.profileImageUrl} />
-                        <span className="font-medium text-ink">{u.fullName}</span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-ink">{u.fullName}</p>
+                          <p className="text-xs text-ink-muted tnum">{u.phone ?? "—"}</p>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-ink-soft">{u.login}</td>
-                    <td className="px-4 py-3 text-ink-soft tnum">{u.phone ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      {u.gender ? (
+                        <Badge tone="neutral">{GENDER_LABEL[u.gender] ?? u.gender}</Badge>
+                      ) : (
+                        <span className="text-ink-muted">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       {kids.length === 0 ? (
                         <span className="text-ink-muted">—</span>
@@ -290,7 +305,8 @@ export default function ParentsPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-ink-soft tnum">{u.pinfl ?? "—"}</td>
+                    <td className="px-4 py-3 text-ink-soft">{u.workplace ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-ink-soft tnum">{u.documentNumber ?? "—"}</td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       {canManage && (
                         <div className="relative inline-block">
