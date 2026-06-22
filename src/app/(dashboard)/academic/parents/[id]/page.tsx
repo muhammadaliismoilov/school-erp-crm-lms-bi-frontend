@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, GraduationCap, Pencil, Phone, User as UserIcon } from "lucide-react";
 import { useUser } from "@/lib/api/users";
 import { childClassLabel, childName, useParentChildren } from "@/lib/api/parents";
@@ -16,8 +16,9 @@ const LANG_LABEL: Record<string, string> = { uz: "O‘zbek", ru: "Rus", en: "Ing
 
 type TabKey = "info" | "children";
 
-export default function ParentDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ParentDetailPage() {
+  const params = useParams<{ id: string }>();
+  const id = params?.id ?? "";
   const router = useRouter();
   const can = useAuthStore((s) => s.can);
   const canManage = can("users.manage");
