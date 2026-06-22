@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Award, Crown, Medal, Plus, Star, Trash2, Trophy } from "lucide-react";
+import { Award, Crown, Medal, Pencil, Plus, Star, Trash2, Trophy } from "lucide-react";
 import {
   useAchievements,
   useAchievementStats,
   useCreateAchievement,
   useDeleteAchievement,
+  useUpdateAchievement,
+  type Achievement,
   type AchievementCategory,
   type AchievementIcon,
   type AchievementInput,
@@ -86,28 +88,57 @@ const EMPTY: AchievementInput = {
 export function AchievementsTab({ studentId, canManage }: { studentId: string; canManage: boolean }) {
   const [cat, setCat] = useState<"" | AchievementCategory>("");
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AchievementInput>(EMPTY);
 
   const { data: items, isLoading } = useAchievements(studentId, cat || undefined);
   const { data: stats } = useAchievementStats(studentId);
   const createAch = useCreateAchievement(studentId);
+  const updateAch = useUpdateAchievement(studentId);
   const deleteAch = useDeleteAchievement(studentId);
 
   function set<K extends keyof AchievementInput>(key: K, value: AchievementInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function openCreate() {
+    setEditingId(null);
+    setForm(EMPTY);
+    setOpen(true);
+  }
+
+  function openEdit(a: Achievement) {
+    setEditingId(a.id);
+    setForm({
+      title: a.title,
+      category: a.category,
+      rank: a.rank,
+      icon: a.icon,
+      achievedAt: a.achievedAt ? a.achievedAt.slice(0, 10) : "",
+      organization: a.organization ?? "",
+      description: a.description ?? "",
+      certificateUrl: a.certificateUrl ?? "",
+    });
+    setOpen(true);
+  }
+
   async function submit() {
     if (!form.title.trim()) return;
-    await createAch.mutateAsync({
+    const payload: AchievementInput = {
       ...form,
       title: form.title.trim(),
       achievedAt: form.achievedAt || undefined,
       organization: form.organization || undefined,
       description: form.description || undefined,
       certificateUrl: form.certificateUrl || undefined,
-    });
+    };
+    if (editingId) {
+      await updateAch.mutateAsync({ id: editingId, input: payload });
+    } else {
+      await createAch.mutateAsync(payload);
+    }
     setForm(EMPTY);
+    setEditingId(null);
     setOpen(false);
   }
 
@@ -129,7 +160,7 @@ export function AchievementsTab({ studentId, canManage }: { studentId: string; c
           ))}
         </div>
         {canManage && (
-          <Button onClick={() => setOpen(true)}>
+          <Button onClick={openCreate}>
             <Plus className="h-4 w-4" /> Yutuq qo‘shish
           </Button>
         )}
@@ -156,7 +187,7 @@ export function AchievementsTab({ studentId, canManage }: { studentId: string; c
             O‘quvchi yutuq qo‘lga kiritganda — “Yutuq qo‘shish” tugmasi orqali kiritishingiz mumkin
           </p>
           {canManage && (
-            <Button className="mt-2" onClick={() => setOpen(true)}>
+            <Button className="mt-2" onClick={openCreate}>
               <Plus className="h-4 w-4" /> Birinchi yutuqni qo‘shish
             </Button>
           )}
@@ -172,13 +203,22 @@ export function AchievementsTab({ studentId, canManage }: { studentId: string; c
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-ink">{a.title}</p>
                   {canManage && (
-                    <button
-                      onClick={() => deleteAch.mutate(a.id)}
-                      className="shrink-0 text-ink-muted hover:text-negative"
-                      aria-label="O‘chirish"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        onClick={() => openEdit(a)}
+                        className="text-ink-muted hover:text-accent"
+                        aria-label="Tahrirlash"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteAch.mutate(a.id)}
+                        className="text-ink-muted hover:text-negative"
+                        aria-label="O‘chirish"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
@@ -201,13 +241,13 @@ export function AchievementsTab({ studentId, canManage }: { studentId: string; c
       <Modal
         open={open}
         onClose={() => setOpen(false)}
-        title="Yangi yutuq qo‘shish"
+        title={editingId ? "Yutuqni tahrirlash" : "Yangi yutuq qo‘shish"}
         footer={
           <>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Bekor qilish
             </Button>
-            <Button loading={createAch.isPending} onClick={submit}>
+            <Button loading={createAch.isPending || updateAch.isPending} onClick={submit}>
               <Trophy className="h-4 w-4" /> Yutuqni saqlash
             </Button>
           </>

@@ -82,6 +82,8 @@ export interface UserListParams {
   role?: UserRole;
   gender?: UserGender;
   status?: UserStatus;
+  /** Filter parents to those with a linked student in this class. */
+  childClassId?: string;
   page?: number;
   limit?: number;
 }

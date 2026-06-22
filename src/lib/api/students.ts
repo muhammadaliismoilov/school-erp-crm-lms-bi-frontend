@@ -69,6 +69,8 @@ export interface Student {
   interests?: string[];
   extraDocuments?: ExtraDocuments;
   parents?: StudentParentLink[];
+  withdrawalReason?: string | null;
+  deletedAt?: string | null;
   createdAt: string;
 }
 
@@ -77,6 +79,20 @@ export interface StudentStats {
   male: number;
   female: number;
   newThisMonth: number;
+}
+
+export interface DepartedStats {
+  total: number;
+  male: number;
+  female: number;
+}
+
+export interface DepartedListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  gender?: Gender;
+  classId?: string;
 }
 
 export interface ListParams {
@@ -132,8 +148,23 @@ const studentsApi = {
   update(id: string, input: Partial<StudentInput>): Promise<Student> {
     return apiRequest<Student>(`/students/${id}`, { method: "PATCH", body: input });
   },
-  remove(id: string): Promise<{ id: string }> {
-    return apiRequest<{ id: string }>(`/students/${id}`, { method: "DELETE" });
+  remove(id: string, reason?: string): Promise<{ id: string }> {
+    return apiRequest<{ id: string }>(`/students/${id}`, {
+      method: "DELETE",
+      body: reason ? { reason } : undefined,
+    });
+  },
+  departedList(params: DepartedListParams): Promise<Page<Student>> {
+    return apiRequest<Page<Student>>("/students/departed", { query: { ...params } });
+  },
+  departedStats(): Promise<DepartedStats> {
+    return apiRequest<DepartedStats>("/students/departed/stats");
+  },
+  restore(id: string): Promise<{ id: string }> {
+    return apiRequest<{ id: string }>(`/students/${id}/restore`, { method: "POST" });
+  },
+  permanentRemove(id: string): Promise<{ id: string }> {
+    return apiRequest<{ id: string }>(`/students/${id}/permanent`, { method: "DELETE" });
   },
 };
 
@@ -183,8 +214,45 @@ export function useUpdateStudent() {
 export function useDeleteStudent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => studentsApi.remove(id),
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      studentsApi.remove(id, reason),
     onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
+  });
+}
+
+// ----------------------------------------------------------------- Ketgan o‘quvchilar
+
+const DEPARTED_KEY = ["students", "departed"] as const;
+
+export function useDepartedStudents(params: DepartedListParams) {
+  return useQuery({
+    queryKey: [...DEPARTED_KEY, params],
+    queryFn: () => studentsApi.departedList(params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useDepartedStats() {
+  return useQuery({
+    queryKey: [...DEPARTED_KEY, "stats"],
+    queryFn: () => studentsApi.departedStats(),
+    staleTime: 30_000,
+  });
+}
+
+export function useRestoreStudent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => studentsApi.restore(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LIST_KEY }),
+  });
+}
+
+export function usePermanentRemoveStudent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => studentsApi.permanentRemove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: DEPARTED_KEY }),
   });
 }
 

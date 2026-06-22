@@ -93,6 +93,18 @@ export function useCreateAchievement(studentId: string) {
   });
 }
 
+export function useUpdateAchievement(studentId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<AchievementInput> }) =>
+      apiRequest<Achievement>(`/students/${studentId}/achievements/${id}`, {
+        method: "PATCH",
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY(studentId) }),
+  });
+}
+
 export function useDeleteAchievement(studentId: string) {
   const qc = useQueryClient();
   return useMutation({

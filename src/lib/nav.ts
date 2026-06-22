@@ -71,7 +71,7 @@ export const ACADEMIC_GROUP: NavGroup = {
     { href: "/academic/calendar", labelKey: "nav.ac.calendar", icon: NotebookPen },
     { href: "/academic/progress-exams", labelKey: "nav.ac.progressExams", icon: ClipboardList },
     { href: "/academic/state-exam", labelKey: "nav.ac.stateExam", icon: Award },
-    { href: "/academic/students", labelKey: "nav.ac.students", icon: Users },
+    { href: "/students", labelKey: "nav.ac.students", icon: Users },
     { href: "/academic/parents", labelKey: "nav.ac.parents", icon: UsersRound },
     { href: "/academic/departed", labelKey: "nav.ac.departed", icon: UserMinus },
     { href: "/academic/grade-requests", labelKey: "nav.ac.gradeRequests", icon: SquarePen },

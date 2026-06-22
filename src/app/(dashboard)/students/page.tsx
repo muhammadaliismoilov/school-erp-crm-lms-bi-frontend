@@ -69,6 +69,7 @@ export default function StudentsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState<Student | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
   const { data, isLoading, isError, refetch } = useStudents({
@@ -105,8 +106,9 @@ export default function StudentsPage() {
 
   async function confirmDelete() {
     if (!deleting) return;
-    await deleteStudent.mutateAsync(deleting.id);
+    await deleteStudent.mutateAsync({ id: deleting.id, reason: deleteReason.trim() || undefined });
     setDeleting(null);
+    setDeleteReason("");
   }
 
   const rows = data?.items ?? [];
@@ -333,13 +335,22 @@ export default function StudentsPage() {
 
       <Modal
         open={Boolean(deleting)}
-        onClose={() => setDeleting(null)}
+        onClose={() => {
+          setDeleting(null);
+          setDeleteReason("");
+        }}
         title="O‘quvchini o‘chirish"
         subtitle={deleting ? fullName(deleting) : undefined}
         size="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDeleting(null)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setDeleting(null);
+                setDeleteReason("");
+              }}
+            >
               Bekor qilish
             </Button>
             <Button variant="danger" loading={deleteStudent.isPending} onClick={confirmDelete}>
@@ -349,12 +360,24 @@ export default function StudentsPage() {
         }
       >
         <p className="text-sm text-ink-soft">
-          Ushbu o‘quvchi ro‘yxatdan o‘chiriladi. Bu amalni keyinroq tiklash mumkin (soft-delete).
+          Ushbu o‘quvchi ro‘yxatdan o‘chiriladi va “Ketgan o‘quvchilar” ro‘yxatiga o‘tadi. Bu amalni
+          keyinroq tiklash mumkin (soft-delete).
         </p>
         <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink-muted">
           <Phone className="h-3.5 w-3.5" />
           {deleting && (primaryParent(deleting)?.phone ?? "—")}
         </p>
+        <div className="mt-4">
+          <label className="label mb-1.5 block">Ketish sababi (ixtiyoriy)</label>
+          <textarea
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            rows={3}
+            maxLength={500}
+            placeholder="Masalan: boshqa maktabga ko‘chdi"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink transition-colors focus:border-amber focus-visible:focus-ring"
+          />
+        </div>
       </Modal>
     </div>
   );

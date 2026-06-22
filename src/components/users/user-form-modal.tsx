@@ -89,9 +89,13 @@ interface UserFormModalProps {
   onClose: () => void;
   /** When provided, the modal edits this user; otherwise it creates a new one. */
   user?: User | null;
+  /** Preselect this role name when creating (e.g. "parent"). */
+  defaultRoleName?: string;
+  /** Disable the role selector — used by role-scoped pages (parents, teachers…). */
+  lockRole?: boolean;
 }
 
-export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
+export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }: UserFormModalProps) {
   const { t, locale } = useI18n();
   const isEdit = Boolean(user);
   const create = useCreateUser();
@@ -169,13 +173,17 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
     [roles.data],
   );
 
-  // Default the role to the first available one when creating.
+  // Default the role when creating: a caller-provided one (e.g. "parent") wins,
+  // otherwise fall back to the first available role.
   useEffect(() => {
     if (open && !user && !form.roleName && roleOptions.length > 0) {
-      set("roleName", roleOptions[0].value);
+      const preferred = defaultRoleName
+        ? roleOptions.find((r) => r.value === defaultRoleName)?.value
+        : undefined;
+      set("roleName", preferred ?? roleOptions[0].value);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, user, roleOptions, form.roleName]);
+  }, [open, user, roleOptions, form.roleName, defaultRoleName]);
 
   function buildPayload(): UserInput {
     const trimmed = (s: string) => {
@@ -489,6 +497,7 @@ export function UserFormModal({ open, onClose, user }: UserFormModalProps) {
                 onChange={(e) => set("roleName", e.target.value)}
                 options={roleOptions}
                 placeholder={t("users.f.rolePlaceholder")}
+                disabled={lockRole}
               />
             </Field>
             <Field label={t("users.f.pinfl")} htmlFor="u-pinfl">

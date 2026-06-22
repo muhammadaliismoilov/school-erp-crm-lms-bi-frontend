@@ -80,6 +80,20 @@ export function formatDateDMY(value: string | Date | null | undefined): string {
 }
 
 /**
+ * To'liq sana+soat: `dd/mm/yyyy, HH:mm` (mahalliy vaqt zonasida).
+ * Sana ajratib bo'lmasa "—". Soat ajratib bo'lmasa faqat sana qaytadi.
+ */
+export function formatDateTimeDMY(value: string | Date | null | undefined): string {
+  const date = formatDateDMY(value);
+  if (date === "—") return "—";
+  const d = value instanceof Date ? value : new Date(value as string);
+  if (Number.isNaN(d.getTime())) return date;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${date}, ${hh}:${mm}`;
+}
+
+/**
  * Sonni mingliklar oddiy bo'shliq bilan ko'rsatadi: `100000` → `100 000`,
  * `1000.5` → `1 000.5`. Noto'g'ri/bo'sh → "—".
  */

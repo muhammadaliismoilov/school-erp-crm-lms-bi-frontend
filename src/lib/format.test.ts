@@ -4,6 +4,7 @@ import {
   dmyToISO,
   maskDMY,
   formatDateDMY,
+  formatDateTimeDMY,
   formatNumberSpaced,
   maskNumber,
   stripNumber,
@@ -72,6 +73,22 @@ describe("formatDateDMY", () => {
     expect(formatDateDMY(null)).toBe("—");
     expect(formatDateDMY("")).toBe("—");
     expect(formatDateDMY("xxx")).toBe("—");
+  });
+});
+
+describe("formatDateTimeDMY", () => {
+  it("local Date → dd/mm/yyyy, HH:mm", () => {
+    const d = new Date(2026, 5, 19, 12, 44);
+    expect(formatDateTimeDMY(d)).toBe("19/06/2026, 12:44");
+  });
+  it("soatlarni nol bilan to'ldiradi", () => {
+    const d = new Date(2026, 0, 5, 9, 3);
+    expect(formatDateTimeDMY(d)).toBe("05/01/2026, 09:03");
+  });
+  it("bo'sh/noto'g'ri → —", () => {
+    expect(formatDateTimeDMY(null)).toBe("—");
+    expect(formatDateTimeDMY("")).toBe("—");
+    expect(formatDateTimeDMY("xxx")).toBe("—");
   });
 });
 

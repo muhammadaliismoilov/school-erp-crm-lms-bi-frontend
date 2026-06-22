@@ -1,19 +1,10 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { AcademicTablePage } from "@/components/academic/table-page";
-import { useI18n } from "@/lib/i18n/provider";
-import { studentColumns } from "../student-columns";
-
-export default function AcademicStudentsPage() {
-  const { t } = useI18n();
-  return (
-    <AcademicTablePage
-      title={t("nav.ac.students")}
-      subtitle="Maktab o‘quvchilari"
-      queryKey="academic-students"
-      path="/students"
-      columns={studentColumns}
-      serverPaginated
-    />
-  );
+/**
+ * The rich students experience lives at `/students` (list) and `/students/[id]`
+ * (9-tab profile). This legacy route now redirects there so the sidebar and any
+ * old bookmarks land on the full-featured page instead of the basic table.
+ */
+export default function AcademicStudentsRedirect() {
+  redirect("/students");
 }
