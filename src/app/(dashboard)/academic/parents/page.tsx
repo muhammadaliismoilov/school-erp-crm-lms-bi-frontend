@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Download,
+  Eye,
   KeyRound,
   MoreHorizontal,
   Pencil,
@@ -12,6 +13,7 @@ import {
   ShieldCheck,
   Trash2,
   Unlink,
+  UserMinus,
   UserRound,
   Users,
 } from "lucide-react";
@@ -318,37 +320,55 @@ export default function ParentsPage() {
                             <MoreHorizontal className="h-4 w-4" />
                           </button>
                           {menuFor === u.id && (
-                            <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+                            <div
+                              role="menu"
+                              className="absolute right-0 z-20 mt-1 w-52 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg"
+                            >
                               <button
-                                onClick={() => openEdit(u)}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                                role="menuitem"
+                                onClick={() => {
+                                  setMenuFor(null);
+                                  router.push(`/academic/parents/${u.id}`);
+                                }}
+                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
                               >
-                                <Pencil className="h-4 w-4" /> Tahrirlash
+                                <Eye className="h-4 w-4 text-sky-500" /> Tafsilotlar
                               </button>
                               <button
+                                role="menuitem"
                                 onClick={() => {
                                   setResetFor(u);
                                   setMenuFor(null);
                                 }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
                               >
-                                <KeyRound className="h-4 w-4" /> Parolni yangilash
+                                <KeyRound className="h-4 w-4 text-amber-500" /> Parolni yangilash
                               </button>
                               <button
+                                role="menuitem"
+                                onClick={() => openEdit(u)}
+                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                              >
+                                <Pencil className="h-4 w-4 text-indigo-500" /> Tahrirlash
+                              </button>
+                              <div className="my-1 border-t border-line/70" />
+                              <button
+                                role="menuitem"
                                 onClick={() => {
                                   setChildrenFor(u);
                                   setMenuFor(null);
                                 }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-orange-600 hover:bg-orange-500/8"
                               >
-                                <Unlink className="h-4 w-4" /> O‘quvchini ajratish
+                                <UserMinus className="h-4 w-4" /> O‘quvchini ajratish
                               </button>
                               <button
+                                role="menuitem"
                                 onClick={() => {
                                   setDeleting(u);
                                   setMenuFor(null);
                                 }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
+                                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
                               >
                                 <Trash2 className="h-4 w-4" /> O‘chirish
                               </button>
