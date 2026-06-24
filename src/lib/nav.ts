@@ -18,7 +18,6 @@ import {
   MessagesSquare,
   UserCheck,
   Trophy,
-  FileBarChart,
   Building2,
   DoorClosed,
   School,
@@ -78,7 +77,7 @@ export const ACADEMIC_GROUP: NavGroup = {
     { href: "/academic/parent-comms", labelKey: "nav.ac.parentComms", icon: MessagesSquare },
     { href: "/academic/student-parent", labelKey: "nav.ac.studentParent", icon: UserCheck },
     { href: "/academic/rating", labelKey: "nav.ac.rating", icon: Trophy },
-    { href: "/academic/reports", labelKey: "nav.ac.reports", icon: FileBarChart },
+    { href: "/academic/progress-reports", labelKey: "nav.ac.progressReports", icon: BarChart3 },
   ],
 };
 
