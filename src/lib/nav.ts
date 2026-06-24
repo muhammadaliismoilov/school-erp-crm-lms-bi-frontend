@@ -30,6 +30,7 @@ import {
   Blocks,
   Link2,
   BarChart3,
+  ArrowRightLeft,
   type LucideIcon,
 } from "lucide-react";
 
@@ -113,6 +114,18 @@ export const SETTINGS_GROUP: NavGroup = {
   ],
 };
 
+/** "Moliya" section — transactions and contracts. */
+export const FINANCE_GROUP: NavGroup = {
+  id: "finance",
+  labelKey: "nav.finance",
+  icon: Wallet,
+  permission: "finance.read",
+  children: [
+    { href: "/finance/transactions", labelKey: "nav.finance.transactions", icon: ArrowRightLeft, permission: "finance.read" },
+    { href: "/finance", labelKey: "nav.finance.contracts", icon: ClipboardList, permission: "finance.read" },
+  ],
+};
+
 export const NAV_ITEMS: NavEntry[] = [
   { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { href: "/explorer", labelKey: "nav.explorer", icon: TerminalSquare, badge: "explorer" },
@@ -123,12 +136,7 @@ export const NAV_ITEMS: NavEntry[] = [
     icon: CalendarCheck,
     permission: "attendance.read",
   },
-  {
-    href: "/finance",
-    labelKey: "nav.finance",
-    icon: Wallet,
-    permission: "finance.read",
-  },
+  FINANCE_GROUP,
   {
     id: "crm",
     labelKey: "nav.crm",
