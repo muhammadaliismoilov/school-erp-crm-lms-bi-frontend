@@ -31,6 +31,7 @@ import {
   Link2,
   BarChart3,
   ArrowRightLeft,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 
@@ -122,6 +123,7 @@ export const FINANCE_GROUP: NavGroup = {
   permission: "finance.read",
   children: [
     { href: "/finance/transactions", labelKey: "nav.finance.transactions", icon: ArrowRightLeft, permission: "finance.read" },
+    { href: "/finance/payment-types", labelKey: "nav.finance.paymentTypes", icon: CreditCard, permission: "finance.read" },
     { href: "/finance", labelKey: "nav.finance.contracts", icon: ClipboardList, permission: "finance.read" },
   ],
 };
