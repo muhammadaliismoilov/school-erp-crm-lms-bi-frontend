@@ -62,6 +62,10 @@ export interface Student {
   currentClass?: ClassBrief | null;
   contractNumber?: string | null;
   discountPercent?: number | string;
+  monthlyFee?: number | string;
+  discountType?: "percent" | "amount";
+  discountValue?: number | string;
+  billingStartDate?: string | null;
   region?: string | null;
   district?: string | null;
   address?: string | null;
@@ -118,6 +122,10 @@ export interface StudentInput {
   contractNumber?: string;
   status?: StudentStatus;
   discountPercent?: number;
+  monthlyFee?: number;
+  discountType?: "percent" | "amount";
+  discountValue?: number;
+  billingStartDate?: string;
   region?: string;
   district?: string;
   address?: string;

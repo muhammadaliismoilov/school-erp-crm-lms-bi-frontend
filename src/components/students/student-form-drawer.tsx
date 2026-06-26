@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch, type Control } from "react-hook-form";
 import { GraduationCap } from "lucide-react";
 import {
   useCreateStudent,
@@ -17,7 +17,9 @@ import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { Field, Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
+import { formatMoney } from "@/lib/utils";
 
 interface FormValues {
   lastName: string;
@@ -33,7 +35,9 @@ interface FormValues {
   region: string;
   district: string;
   address: string;
-  discountPercent: number;
+  monthlyFee: number;
+  discountType: "percent" | "amount";
+  discountValue: number;
 }
 
 const EXTRA_DOCS: { key: keyof ExtraDocuments; label: string }[] = [
@@ -73,7 +77,9 @@ function toDefaults(student?: Student | null): FormValues {
     region: student?.region ?? "",
     district: student?.district ?? "",
     address: student?.address ?? "",
-    discountPercent: Number(student?.discountPercent ?? 0),
+    monthlyFee: Number(student?.monthlyFee ?? 0),
+    discountType: student?.discountType ?? "percent",
+    discountValue: Number(student?.discountValue ?? student?.discountPercent ?? 0),
   };
 }
 
@@ -125,7 +131,9 @@ export function StudentFormDrawer({ open, onClose, student, onSaved }: Props) {
       region: values.region.trim() || undefined,
       district: values.district.trim() || undefined,
       address: values.address.trim() || undefined,
-      discountPercent: Number(values.discountPercent) || 0,
+      monthlyFee: Number(values.monthlyFee) || 0,
+      discountType: values.discountType,
+      discountValue: Number(values.discountValue) || 0,
       extraDocuments: extraDocs,
     };
 
@@ -256,28 +264,9 @@ export function StudentFormDrawer({ open, onClose, student, onSaved }: Props) {
           </Field>
         </Section>
 
-        {/* Chegirma */}
-        <Section title="Chegirma">
-          <Controller
-            control={control}
-            name="discountPercent"
-            render={({ field }) => (
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={field.value}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                  className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-line accent-accent"
-                />
-                <span className="w-14 text-right font-display text-lg font-semibold text-accent tnum">
-                  {field.value}%
-                </span>
-              </div>
-            )}
-          />
+        {/* To'lov: oylik tarif va chegirma */}
+        <Section title="To‘lov (oylik tarif va chegirma)">
+          <BillingFields control={control} />
         </Section>
 
         {/* Qo'shimcha hujjatlar */}
@@ -326,5 +315,72 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h4 className="label border-b border-line pb-1.5">{title}</h4>
       {children}
     </section>
+  );
+}
+
+/**
+ * Oylik tarif + chegirma (foiz/so'm) maydonlari. Alohida komponent — `useWatch`
+ * faqat shu blokni qayta render qiladi, butun formani emas. Chegirmadan keyingi
+ * oylik to'lov jonli ko'rsatiladi.
+ */
+function BillingFields({ control }: { control: Control<FormValues> }) {
+  const [monthlyFee, discountType, discountValue] = useWatch({
+    control,
+    name: ["monthlyFee", "discountType", "discountValue"],
+  });
+  const fee = Number(monthlyFee) || 0;
+  const value = Number(discountValue) || 0;
+  const discount = discountType === "percent" ? (fee * value) / 100 : value;
+  const effective = Math.max(fee - discount, 0);
+
+  return (
+    <div className="space-y-3">
+      <Field label="Oylik tarif (so‘m)">
+        <Controller
+          control={control}
+          name="monthlyFee"
+          render={({ field }) => (
+            <NumberInput value={field.value} onChange={(v) => field.onChange(v ?? 0)} placeholder="0" />
+          )}
+        />
+      </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Chegirma turi">
+          <Controller
+            control={control}
+            name="discountType"
+            render={({ field }) => (
+              <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-line">
+                {(["percent", "amount"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => field.onChange(t)}
+                    className={`py-2 text-sm font-medium transition-colors ${
+                      field.value === t ? "bg-accent text-accent-fg" : "bg-surface text-ink-muted hover:text-ink"
+                    }`}
+                  >
+                    {t === "percent" ? "Foiz (%)" : "So‘m"}
+                  </button>
+                ))}
+              </div>
+            )}
+          />
+        </Field>
+        <Field label={discountType === "percent" ? "Chegirma (%)" : "Chegirma (so‘m)"}>
+          <Controller
+            control={control}
+            name="discountValue"
+            render={({ field }) => (
+              <NumberInput value={field.value} onChange={(v) => field.onChange(v ?? 0)} placeholder="0" />
+            )}
+          />
+        </Field>
+      </div>
+      <p className="text-sm text-ink-muted">
+        Chegirmadan keyin oylik:{" "}
+        <span className="font-semibold text-ink tnum">{formatMoney(effective)}</span>
+      </p>
+    </div>
   );
 }

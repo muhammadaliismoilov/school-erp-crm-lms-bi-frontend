@@ -15,7 +15,6 @@ import {
 } from "@/lib/api/transactions";
 import { useClassList } from "@/lib/api/classes";
 import { useStudents } from "@/lib/api/students";
-import { useUsers } from "@/lib/api/users";
 import { useUploadFile } from "@/lib/api/files";
 import { useAuthStore } from "@/lib/auth/store";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ interface FormState {
   purposeCategoryId: string;
   amount: number | null;
   paymentTypeId: string;
-  personId: string;
   month: string;
   note: string;
   receiptFileId: string | null;
@@ -50,7 +48,6 @@ const emptyForm = (): FormState => ({
   purposeCategoryId: "",
   amount: null,
   paymentTypeId: "",
-  personId: "",
   month: String(new Date().getMonth() + 1),
   note: "",
   receiptFileId: null,
@@ -71,7 +68,6 @@ function TransactionForm() {
   const canManage = can("finance.manage");
 
   const { data: options } = useTransactionOptions();
-  const { data: usersData } = useUsers({ page: 1, limit: 100 });
   const { data: classesData } = useClassList();
   const { data: existing } = useTransaction(editId);
   const createTx = useCreateTransaction();
@@ -90,7 +86,6 @@ function TransactionForm() {
       purposeCategoryId: existing.purposeCategoryId ?? "",
       amount: existing.amount,
       paymentTypeId: existing.paymentTypeId ?? "",
-      personId: existing.personId ?? "",
       month: existing.month ? String(existing.month) : String(new Date().getMonth() + 1),
       note: existing.note ?? "",
       receiptFileId: existing.receiptFileId ?? null,
@@ -126,16 +121,6 @@ function TransactionForm() {
       ...(options?.paymentTypes ?? []).map((p) => ({ value: p.id, label: p.name })),
     ],
     [options],
-  );
-  const personOptions = useMemo(
-    () => [
-      { value: "", label: "Shaxsni tanlang" },
-      ...(usersData?.items ?? []).map((u) => {
-        const role = u.roles?.[0]?.name;
-        return { value: u.id, label: `${u.lastName} ${u.firstName}`.trim() + (role ? ` — ${role}` : "") };
-      }),
-    ],
-    [usersData],
   );
   const classOptions = useMemo(
     () => [{ value: "", label: "Sinfni tanlang" }, ...(classesData?.items ?? []).map((c) => ({ value: c.id, label: c.name }))],
@@ -179,7 +164,6 @@ function TransactionForm() {
       amount: form.amount,
       purposeCategoryId: form.purposeCategoryId || undefined,
       paymentTypeId: form.paymentTypeId || undefined,
-      personId: form.personId || undefined,
       month: form.month ? Number(form.month) : undefined,
       note: form.note.trim() || undefined,
       receiptFileId: form.receiptFileId || undefined,
@@ -274,17 +258,6 @@ function TransactionForm() {
               value={form.paymentTypeId}
               placeholder="To‘lov turini tanlang"
               onChange={(e) => patch({ paymentTypeId: e.target.value })}
-            />
-          </Field>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Shaxs">
-            <Select
-              options={personOptions}
-              value={form.personId}
-              placeholder="Shaxsni tanlang"
-              onChange={(e) => patch({ personId: e.target.value })}
             />
           </Field>
           <Field label="Oylar">

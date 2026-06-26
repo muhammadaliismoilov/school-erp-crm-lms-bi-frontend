@@ -40,6 +40,10 @@ export interface StudentOverview {
     classLabel?: string | null;
     contractNumber?: string | null;
     discountPercent: number;
+    monthlyFee?: number;
+    discountType?: "percent" | "amount";
+    discountValue?: number;
+    billingStartDate?: string | null;
     region?: string | null;
     district?: string | null;
     address?: string | null;

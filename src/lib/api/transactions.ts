@@ -31,6 +31,12 @@ export interface Transaction {
   price: number | null;
   classId: string | null;
   studentId: string | null;
+  createdBy: string | null;
+  createdByName: string | null;
+  createdByRole: string | null;
+  updatedBy: string | null;
+  updatedByName: string | null;
+  updatedByRole: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

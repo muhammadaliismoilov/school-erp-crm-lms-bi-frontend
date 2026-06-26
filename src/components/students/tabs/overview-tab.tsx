@@ -13,7 +13,7 @@ import {
 import { useStudentOverview } from "@/lib/api/student-profile";
 import { Card, Spinner } from "@/components/ui/card";
 import { StatCard } from "@/components/students/stat-card";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatMoney } from "@/lib/utils";
 
 const genderLabel: Record<string, string> = { male: "Erkak", female: "Ayol", other: "Boshqa" };
 const langLabel: Record<string, string> = { uz: "O‘zbek", ru: "Rus", en: "Ingliz" };
@@ -40,7 +40,14 @@ export function OverviewTab({ studentId }: { studentId: string }) {
     { label: "Hujjat raqami", value: p.nationalId || "—" },
     { label: "Sinf", value: p.classLabel || "—" },
     { label: "Shartnoma", value: p.contractNumber || "—" },
-    { label: "Chegirma", value: `${p.discountPercent}%` },
+    { label: "Oylik tarif", value: p.monthlyFee ? formatMoney(p.monthlyFee) : "—" },
+    {
+      label: "Chegirma",
+      value:
+        p.discountType === "amount"
+          ? formatMoney(p.discountValue ?? 0)
+          : `${p.discountValue ?? p.discountPercent ?? 0}%`,
+    },
     { label: "Manzil", value: [p.region, p.district, p.address].filter(Boolean).join(", ") || "—" },
     { label: "Telefon", value: p.personalPhone || "—" },
   ];

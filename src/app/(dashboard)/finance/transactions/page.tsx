@@ -79,7 +79,13 @@ type Tab = "list" | "stats";
 export default function TransactionsPage() {
   const router = useRouter();
   const can = useAuthStore((s) => s.can);
+  const currentUser = useAuthStore((s) => s.user);
   const canManage = can("finance.manage");
+  const isSuperAdmin = can("*.*");
+  // Yozuvni faqat egasi yoki super-admin o'zgartira/o'chira oladi; egasi
+  // noma'lum eski yozuvlarda (createdBy=null) — finance.manage yetarli (back-compat).
+  const canModify = (createdBy: string | null) =>
+    canManage && (createdBy == null || createdBy === currentUser?.id || isSuperAdmin);
 
   const [tab, setTab] = useState<Tab>("list");
   const [page, setPage] = useState(1);
@@ -95,6 +101,7 @@ export default function TransactionsPage() {
 
   const [viewing, setViewing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
   const filters: TransactionListParams = useMemo(
@@ -171,8 +178,15 @@ export default function TransactionsPage() {
 
   async function confirmDelete() {
     if (!deleting) return;
-    await deleteTx.mutateAsync(deleting.id);
-    setDeleting(null);
+    setDeleteError(null);
+    try {
+      await deleteTx.mutateAsync(deleting.id);
+      setDeleting(null);
+    } catch (e) {
+      setDeleteError(
+        e instanceof Error ? e.message : "O‘chirishda xatolik yuz berdi. Ruxsatingizni tekshiring.",
+      );
+    }
   }
 
   async function handleExport() {
@@ -340,7 +354,7 @@ export default function TransactionsPage() {
                   <th className="label px-4 py-3 text-left">№</th>
                   <th className="label px-4 py-3 text-left">Sana</th>
                   <th className="label px-4 py-3 text-left">To‘lov maqsadi</th>
-                  <th className="label px-4 py-3 text-left">Shaxs</th>
+                  <th className="label px-4 py-3 text-left">Kiritgan</th>
                   <th className="label px-4 py-3 text-right">Miqdor</th>
                   <th className="label px-4 py-3 text-left">To‘lov turi</th>
                   <th className="label px-4 py-3 text-left">Oy</th>
@@ -376,8 +390,11 @@ export default function TransactionsPage() {
                       <td className="px-4 py-3">{formatDateDMY(r.date)}</td>
                       <td className="px-4 py-3">{r.purposeCategoryName ?? "—"}</td>
                       <td className="px-4 py-3">
-                        {r.personName ?? "—"}
-                        {r.personRole && <span className="ml-1 text-xs text-ink-muted/70">({r.personRole})</span>}
+                        {r.createdByName ?? "—"}
+                        {r.createdByRole && <span className="ml-1 text-xs text-ink-muted/70">({r.createdByRole})</span>}
+                        {r.updatedByName && r.updatedBy !== r.createdBy && (
+                          <span className="block text-xs text-ink-muted/70">o‘zg: {r.updatedByName}</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <AmountCell type={r.type} amount={r.amount} />
@@ -393,7 +410,7 @@ export default function TransactionsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          {canManage && (
+                          {canModify(r.createdBy) && (
                             <>
                               <button
                                 className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
@@ -476,13 +493,25 @@ export default function TransactionsPage() {
             <Detail label="Sana" value={formatDateDMY(viewing.date)} />
             <Detail label="To‘lov maqsadi" value={viewing.purposeCategoryName ?? "—"} />
             <Detail label="To‘lov turi" value={viewing.paymentTypeName ?? "—"} />
-            <Detail label="Shaxs" value={viewing.personName ?? "—"} />
-            <Detail label="Lavozim" value={viewing.personRole ?? "—"} />
             <Detail label="Oy" value={monthLabel(viewing.month)} />
             <Detail label="Yil" value={viewing.year ?? "—"} />
             {viewing.discountPercent != null && <Detail label="Chegirma" value={`${viewing.discountPercent}%`} />}
             {viewing.price != null && <Detail label="Asl narx" value={formatMoney(viewing.price)} />}
             <Detail label="Izoh" value={viewing.note ?? "—"} />
+            <Detail
+              label="Kiritdi"
+              value={
+                viewing.createdByName
+                  ? `${viewing.createdByName}${viewing.createdByRole ? ` (${viewing.createdByRole})` : ""} · ${formatDateDMY(viewing.createdAt)}`
+                  : "—"
+              }
+            />
+            {viewing.updatedByName && viewing.updatedBy !== viewing.createdBy && (
+              <Detail
+                label="O‘zgartirdi"
+                value={`${viewing.updatedByName}${viewing.updatedByRole ? ` (${viewing.updatedByRole})` : ""} · ${formatDateDMY(viewing.updatedAt)}`}
+              />
+            )}
           </dl>
         )}
       </Drawer>
@@ -490,12 +519,16 @@ export default function TransactionsPage() {
       {/* O‘chirish tasdig‘i */}
       <Modal
         open={!!deleting}
-        onClose={() => setDeleting(null)}
+        onClose={() => {
+          setDeleting(null);
+          setDeleteError(null);
+        }}
         title="Tranzaksiyani o‘chirish"
       >
         <p className="text-sm text-ink-muted">
           Ushbu tranzaksiya ({deleting && formatMoney(deleting.amount)}) o‘chiriladi. Davom etilsinmi?
         </p>
+        {deleteError && <p className="mt-2 text-sm text-rose-600">{deleteError}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleting(null)}>
             Bekor qilish
@@ -590,14 +623,14 @@ function StatisticsPanel({ stats }: { stats: ReturnType<typeof useTransactionSta
 
 /** Tranzaksiyalarni CSV (Excel ochadi) sifatida yuklab beradi. */
 function downloadCsv(items: Transaction[]) {
-  const headers = ["Sana", "Turi", "Maqsad", "Shaxs", "Lavozim", "Miqdor", "To‘lov turi", "Oy", "Yil", "Izoh"];
+  const headers = ["Sana", "Turi", "Maqsad", "Kiritgan", "O‘zgartirgan", "Miqdor", "To‘lov turi", "Oy", "Yil", "Izoh"];
   const lines = items.map((r) =>
     [
       r.date,
       TRANSACTION_TYPE_LABELS[r.type],
       r.purposeCategoryName ?? "",
-      r.personName ?? "",
-      r.personRole ?? "",
+      r.createdByName ?? "",
+      r.updatedBy !== r.createdBy ? r.updatedByName ?? "" : "",
       String(r.amount),
       r.paymentTypeName ?? "",
       monthLabel(r.month),
