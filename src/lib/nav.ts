@@ -33,6 +33,7 @@ import {
   ArrowRightLeft,
   CreditCard,
   Receipt,
+  TrendingDown,
   type LucideIcon,
 } from "lucide-react";
 
@@ -125,6 +126,7 @@ export const FINANCE_GROUP: NavGroup = {
   children: [
     { href: "/finance/transactions", labelKey: "nav.finance.transactions", icon: ArrowRightLeft, permission: "finance.read" },
     { href: "/finance/student-payments", labelKey: "nav.finance.studentPayments", icon: Receipt, permission: "finance.read" },
+    { href: "/finance/debts", labelKey: "nav.finance.debts", icon: TrendingDown, permission: "finance.read" },
     { href: "/finance/payment-types", labelKey: "nav.finance.paymentTypes", icon: CreditCard, permission: "finance.read" },
     { href: "/finance", labelKey: "nav.finance.contracts", icon: ClipboardList, permission: "finance.read" },
   ],

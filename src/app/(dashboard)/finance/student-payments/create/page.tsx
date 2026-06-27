@@ -22,6 +22,7 @@ import { Select } from "@/components/ui/select";
 import { NumberInput } from "@/components/ui/number-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
+import { AgreementPanel } from "@/components/finance/agreement-panel";
 
 const MONTH_OPTIONS = MONTH_LABELS.map((m, i) => ({ value: String(i + 1), label: m }));
 
@@ -203,6 +204,9 @@ function StudentPaymentForm() {
             />
           </Field>
         </div>
+
+        {/* O'quvchi tanlanganda — to'lov kelishuvi (reja, jadval, keyingi to'lov) */}
+        {form.studentId && <AgreementPanel studentId={form.studentId} />}
 
         <div className="grid gap-4 md:grid-cols-3">
           <Field label="Summa">
