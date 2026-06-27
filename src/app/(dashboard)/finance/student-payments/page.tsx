@@ -45,6 +45,7 @@ import { Spinner } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { StudentBalancesView } from "@/components/students/student-balances-view";
+import { PlanConfigEditor } from "@/components/students/plan-config-editor";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
@@ -79,7 +80,7 @@ export default function StudentPaymentsPage() {
   const [month, setMonth] = useState<number | null>(null); // null = Barchasi
   const [paymentTypeCode, setPaymentTypeCode] = useState("");
 
-  const [view, setView] = useState<"payments" | "balances">("payments");
+  const [view, setView] = useState<"payments" | "balances" | "plan-config">("payments");
   const [viewing, setViewing] = useState<StudentPayment | null>(null);
   const [deleting, setDeleting] = useState<StudentPayment | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -180,6 +181,7 @@ export default function StudentPaymentsPage() {
         {([
           { key: "payments", label: "To‘lovlar" },
           { key: "balances", label: "Qarzdorlik" },
+          { key: "plan-config", label: "Reja chegirmasi" },
         ] as const).map((t) => (
           <button
             key={t.key}
@@ -193,7 +195,9 @@ export default function StudentPaymentsPage() {
         ))}
       </div>
 
-      {view === "balances" ? (
+      {view === "plan-config" ? (
+        <PlanConfigEditor />
+      ) : view === "balances" ? (
         <StudentBalancesView />
       ) : (
         <>

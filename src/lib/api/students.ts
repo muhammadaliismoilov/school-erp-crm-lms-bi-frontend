@@ -66,6 +66,9 @@ export interface Student {
   discountType?: "percent" | "amount";
   discountValue?: number | string;
   billingStartDate?: string | null;
+  paymentPlan?: "yearly_1x" | "split_2" | "split_3" | "monthly" | null;
+  planDiscountOverrideType?: "percent" | "amount" | null;
+  planDiscountOverrideValue?: number | string | null;
   region?: string | null;
   district?: string | null;
   address?: string | null;
@@ -126,6 +129,9 @@ export interface StudentInput {
   discountType?: "percent" | "amount";
   discountValue?: number;
   billingStartDate?: string;
+  paymentPlan?: "yearly_1x" | "split_2" | "split_3" | "monthly";
+  planDiscountOverrideType?: "percent" | "amount" | null;
+  planDiscountOverrideValue?: number | null;
   region?: string;
   district?: string;
   address?: string;

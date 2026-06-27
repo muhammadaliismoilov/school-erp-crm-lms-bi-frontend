@@ -20,6 +20,8 @@ import { DateInput } from "@/components/ui/date-input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
 import { formatMoney } from "@/lib/utils";
+import { PlanComparison } from "./plan-comparison";
+import type { PlanCode } from "@/lib/api/payment-plans";
 
 interface FormValues {
   lastName: string;
@@ -38,6 +40,11 @@ interface FormValues {
   monthlyFee: number;
   discountType: "percent" | "amount";
   discountValue: number;
+  paymentPlan: "" | "yearly_1x" | "split_2" | "split_3" | "monthly";
+  /** Gibrid: shu o'quvchiga maxsus reja chegirmasi (global config ustidan). */
+  planOverrideEnabled: boolean;
+  planDiscountOverrideType: "percent" | "amount";
+  planDiscountOverrideValue: number;
 }
 
 const EXTRA_DOCS: { key: keyof ExtraDocuments; label: string }[] = [
@@ -80,6 +87,10 @@ function toDefaults(student?: Student | null): FormValues {
     monthlyFee: Number(student?.monthlyFee ?? 0),
     discountType: student?.discountType ?? "percent",
     discountValue: Number(student?.discountValue ?? student?.discountPercent ?? 0),
+    paymentPlan: (student?.paymentPlan as FormValues["paymentPlan"]) ?? "",
+    planOverrideEnabled: Boolean(student?.planDiscountOverrideType),
+    planDiscountOverrideType: (student?.planDiscountOverrideType as "percent" | "amount") ?? "percent",
+    planDiscountOverrideValue: Number(student?.planDiscountOverrideValue ?? 0),
   };
 }
 
@@ -134,6 +145,10 @@ export function StudentFormDrawer({ open, onClose, student, onSaved }: Props) {
       monthlyFee: Number(values.monthlyFee) || 0,
       discountType: values.discountType,
       discountValue: Number(values.discountValue) || 0,
+      paymentPlan: values.paymentPlan || undefined,
+      // Gibrid: override yoqilgan bo'lsa yuboriladi, aks holda null bilan tozalanadi.
+      planDiscountOverrideType: values.planOverrideEnabled ? values.planDiscountOverrideType : null,
+      planDiscountOverrideValue: values.planOverrideEnabled ? Number(values.planDiscountOverrideValue) || 0 : null,
       extraDocuments: extraDocs,
     };
 
@@ -324,14 +339,35 @@ function Section({ title, children }: { title: string; children: React.ReactNode
  * oylik to'lov jonli ko'rsatiladi.
  */
 function BillingFields({ control }: { control: Control<FormValues> }) {
-  const [monthlyFee, discountType, discountValue] = useWatch({
+  const [
+    monthlyFee,
+    discountType,
+    discountValue,
+    paymentPlan,
+    overrideEnabled,
+    overrideType,
+    overrideValue,
+  ] = useWatch({
     control,
-    name: ["monthlyFee", "discountType", "discountValue"],
+    name: [
+      "monthlyFee",
+      "discountType",
+      "discountValue",
+      "paymentPlan",
+      "planOverrideEnabled",
+      "planDiscountOverrideType",
+      "planDiscountOverrideValue",
+    ],
   });
   const fee = Number(monthlyFee) || 0;
   const value = Number(discountValue) || 0;
   const discount = discountType === "percent" ? (fee * value) / 100 : value;
   const effective = Math.max(fee - discount, 0);
+  // Override faqat tanlangan rejaga qo'llanadi (compareForStudent bilan bir xil mantiq).
+  const activeOverride =
+    overrideEnabled && paymentPlan
+      ? { overridePlan: paymentPlan as PlanCode, overrideType, overrideValue: Number(overrideValue) || 0 }
+      : {};
 
   return (
     <div className="space-y-3">
@@ -381,6 +417,88 @@ function BillingFields({ control }: { control: Control<FormValues> }) {
         Chegirmadan keyin oylik:{" "}
         <span className="font-semibold text-ink tnum">{formatMoney(effective)}</span>
       </p>
+
+      <div className="space-y-2 pt-1">
+        <p className="text-sm font-medium text-ink">To‘lov rejasi</p>
+        <Controller
+          control={control}
+          name="paymentPlan"
+          render={({ field }) => (
+            <PlanComparison
+              monthlyFee={fee}
+              discountType={discountType}
+              discountValue={value}
+              value={field.value || null}
+              onSelect={(plan) => field.onChange(plan)}
+              {...activeOverride}
+            />
+          )}
+        />
+      </div>
+
+      {/* Gibrid: bu o'quvchiga maxsus reja chegirmasi (ixtiyoriy — bo'sh bo'lsa global qo'llanadi) */}
+      <div className="space-y-3 rounded-xl border border-dashed border-line p-3">
+        <Controller
+          control={control}
+          name="planOverrideEnabled"
+          render={({ field }) => (
+            <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={field.value}
+                onChange={(e) => field.onChange(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-accent"
+              />
+              <span>
+                <span className="font-medium text-ink">Bu o‘quvchiga maxsus reja chegirmasi</span>
+                <span className="block text-xs text-ink-muted">
+                  Bo‘sh qoldirilsa maktab bo‘yicha umumiy (global) chegirma qo‘llanadi.
+                </span>
+              </span>
+            </label>
+          )}
+        />
+        {overrideEnabled && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Override turi">
+              <Controller
+                control={control}
+                name="planDiscountOverrideType"
+                render={({ field }) => (
+                  <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-line">
+                    {(["percent", "amount"] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => field.onChange(t)}
+                        className={`py-2 text-sm font-medium transition-colors ${
+                          field.value === t ? "bg-accent text-accent-fg" : "bg-surface text-ink-muted hover:text-ink"
+                        }`}
+                      >
+                        {t === "percent" ? "Foiz (%)" : "So‘m"}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              />
+            </Field>
+            <Field label={overrideType === "percent" ? "Override chegirma (%)" : "Override chegirma (so‘m)"}>
+              <Controller
+                control={control}
+                name="planDiscountOverrideValue"
+                render={({ field }) => (
+                  <NumberInput value={field.value} onChange={(v) => field.onChange(v ?? 0)} placeholder="0" />
+                )}
+              />
+            </Field>
+            {!paymentPlan && (
+              <p className="text-xs text-amber-600 sm:col-span-2">
+                Override qo‘llanishi uchun yuqorida to‘lov rejasini tanlang.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

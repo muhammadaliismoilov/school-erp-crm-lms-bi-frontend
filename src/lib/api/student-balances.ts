@@ -16,6 +16,8 @@ export interface StudentBalanceRow {
   /** paid − expected: manfiy = qarz, musbat = avans. */
   balance: number;
   status: BalanceStatus;
+  /** Tanlangan to'lov rejasi (null → oyma-oy). */
+  plan?: "yearly_1x" | "split_2" | "split_3" | "monthly" | null;
 }
 
 export interface StudentBalancesResult {

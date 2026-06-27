@@ -8,6 +8,7 @@ import {
   type StudentBalanceRow,
 } from "@/lib/api/student-balances";
 import { useClassList } from "@/lib/api/classes";
+import { PLAN_LABELS } from "@/lib/api/payment-plans";
 import { formatMoney } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,11 +83,12 @@ export function StudentBalancesView() {
   }
 
   function exportCsv() {
-    const headers = ["O‘quvchi", "Sinf", "Oylik tarif", "Kutilgan", "To‘langan", "Balans", "Holat"];
+    const headers = ["O‘quvchi", "Sinf", "Reja", "Oylik tarif", "Kutilgan", "To‘langan", "Balans", "Holat"];
     const lines = rows.map((r) =>
       [
         r.studentName,
         r.className ?? "",
+        r.plan ? PLAN_LABELS[r.plan] : "Oyma-oy",
         String(r.monthlyFee),
         String(r.expected),
         String(r.paid),
@@ -181,6 +183,7 @@ export function StudentBalancesView() {
               <tr className="border-b border-line bg-parchment-deep/30">
                 <th className="label px-4 py-3 text-left">O‘quvchi</th>
                 <th className="label px-4 py-3 text-left">Sinf</th>
+                <th className="label px-4 py-3 text-left">Reja</th>
                 <th className="label px-4 py-3 text-right">Oylik tarif</th>
                 <th className="label px-4 py-3 text-right">Kutilgan</th>
                 <th className="label px-4 py-3 text-right">To‘langan</th>
@@ -191,13 +194,13 @@ export function StudentBalancesView() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
+                  <td colSpan={8} className="px-4 py-16 text-center">
                     <Spinner />
                   </td>
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center text-ink-muted">
+                  <td colSpan={8} className="px-4 py-16 text-center text-ink-muted">
                     Xatolik yuz berdi.{" "}
                     <button className="text-accent underline" onClick={() => refetch()}>
                       Qayta urinish
@@ -206,7 +209,7 @@ export function StudentBalancesView() {
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center text-ink-muted">
+                  <td colSpan={8} className="px-4 py-16 text-center text-ink-muted">
                     Ma‘lumot yo‘q
                   </td>
                 </tr>
@@ -215,6 +218,7 @@ export function StudentBalancesView() {
                   <tr key={r.studentId} className="border-b border-line/60 last:border-0 hover:bg-parchment-deep/20">
                     <td className="px-4 py-3 font-medium">{r.studentName}</td>
                     <td className="px-4 py-3 text-ink-muted">{r.className ?? "—"}</td>
+                    <td className="px-4 py-3 text-ink-muted">{r.plan ? PLAN_LABELS[r.plan] : "Oyma-oy"}</td>
                     <td className="px-4 py-3 text-right tnum">{formatMoney(r.monthlyFee)}</td>
                     <td className="px-4 py-3 text-right tnum">{formatMoney(r.expected)}</td>
                     <td className="px-4 py-3 text-right tnum">{formatMoney(r.paid)}</td>
