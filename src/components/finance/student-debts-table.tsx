@@ -64,15 +64,38 @@ function TotalCell({ row }: { row: StudentDebtRow }) {
   );
 }
 
-function SummaryCard({ label, value, tone }: { label: string; value: number; tone: "emerald" | "rose" | "ink" }) {
-  const cls = tone === "emerald" ? "text-emerald-600" : tone === "rose" ? "text-rose-600" : "text-ink";
-  const sign = tone === "emerald" ? "+" : tone === "rose" ? "−" : "";
+function SummaryCard({
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  label: string;
+  value: number;
+  /** emerald/rose — doim shu ishora; net — qiymat ishorasiga qarab (manfiy=qarz, musbat=avans). */
+  tone: "emerald" | "rose" | "net";
+  hint?: string;
+}) {
+  // "net" — real balans: ishora va rang qiymatga qarab (chalkashlikni oldini oladi).
+  const positive = value > 1;
+  const negative = value < -1;
+  const cls =
+    tone === "emerald" || (tone === "net" && positive)
+      ? "text-emerald-600"
+      : tone === "rose" || (tone === "net" && negative)
+        ? "text-rose-600"
+        : "text-ink-muted";
+  const sign = tone === "emerald" || (tone === "net" && positive) ? "+" : tone === "rose" || (tone === "net" && negative) ? "−" : "";
+  // Real balans uchun ma'noni ochib beruvchi izoh.
+  const netHint = tone === "net" ? (negative ? "Ota-ona foydasiga (qarz)" : positive ? "Maktab foydasiga (avans)" : "Teng") : hint;
   return (
     <div className="rounded-xl border border-line bg-surface px-4 py-3">
       <p className="text-[11px] uppercase tracking-wide text-ink-muted">{label}</p>
       <p className={`mt-1 font-display text-xl font-semibold tnum ${cls}`}>
-        {sign}{formatMoney(Math.abs(value))} <span className="text-sm font-normal text-ink-muted">UZS</span>
+        {sign}
+        {formatMoney(Math.abs(value))} <span className="text-sm font-normal text-ink-muted">UZS</span>
       </p>
+      {netHint && <p className="mt-0.5 text-[11px] text-ink-muted">{netHint}</p>}
     </div>
   );
 }
@@ -158,7 +181,7 @@ export function StudentDebtsTable() {
       <div className="grid gap-3 px-5 pb-4 sm:grid-cols-3">
         <SummaryCard label="Maktab ota-ona oldida qarzi" value={summary?.schoolOwesTotal ?? 0} tone="emerald" />
         <SummaryCard label="Ota-ona maktab oldida qarzi" value={summary?.parentOwesTotal ?? 0} tone="rose" />
-        <SummaryCard label="Real balans" value={summary?.realBalanceTotal ?? 0} tone="ink" />
+        <SummaryCard label="Real balans" value={summary?.realBalanceTotal ?? 0} tone="net" />
       </div>
 
       {/* Matritsa jadval */}
