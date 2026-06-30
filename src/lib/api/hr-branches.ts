@@ -9,6 +9,8 @@ import { apiRequest } from "./client";
 export interface BranchNode {
   id: string;
   name: string;
+  schoolId: string | null;
+  schoolName: string | null;
   parentId: string | null;
   parentName: string | null;
   isHeadOffice: boolean;
@@ -37,6 +39,7 @@ export interface BranchListParams {
 
 export interface BranchInput {
   name: string;
+  schoolId?: string;
   parentId?: string;
   isHeadOffice?: boolean;
   isActive?: boolean;
@@ -64,6 +67,9 @@ const api = {
   options(): Promise<BranchOption[]> {
     return apiRequest<BranchOption[]>("/hr/branches/options");
   },
+  schoolOptions(): Promise<BranchOption[]> {
+    return apiRequest<BranchOption[]>("/hr/schools/options");
+  },
   create(input: BranchInput): Promise<BranchNode> {
     return apiRequest<BranchNode>("/hr/branches", { method: "POST", body: input });
   },
@@ -90,6 +96,15 @@ export function useBranchOptions() {
   return useQuery({
     queryKey: [...KEY, "options"],
     queryFn: () => api.options(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+/** Boshqaruv (Maktablar) bo'limidagi maktablar — filial ularga bog'lanadi. */
+export function useSchoolOptions() {
+  return useQuery({
+    queryKey: ["hr", "schools", "options"],
+    queryFn: () => api.schoolOptions(),
     staleTime: 5 * 60_000,
   });
 }

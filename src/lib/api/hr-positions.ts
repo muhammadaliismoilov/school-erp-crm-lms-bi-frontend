@@ -16,8 +16,11 @@ export interface Position {
   baseSalary: number;
   departmentId: string | null;
   departmentName: string | null;
+  schoolId: string | null;
+  schoolName: string | null;
   filialId: string | null;
   filialLabel: string | null;
+  ownerLabel: string | null;
   status: PositionStatus;
   createdAt: string;
   updatedAt: string;
@@ -49,6 +52,7 @@ export interface PositionInput {
   description?: string;
   baseSalary?: number;
   departmentId?: string;
+  schoolId?: string;
   filialId?: string;
   status?: PositionStatus;
 }

@@ -7,6 +7,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Copy,
+  Eye,
   History,
   Pencil,
   Plus,
@@ -14,10 +15,14 @@ import {
   Trash2,
   Wand2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   EMPLOYMENT_STATUS_LABELS,
   EMPLOYMENT_STATUS_TONE,
   PAGE_SIZES,
+  QUALIFICATION_CATEGORIES,
+  QUALIFICATION_LABELS,
+  QUALIFICATION_POSITION,
   useCreateStaff,
   useDeleteStaff,
   useDepartments,
@@ -26,6 +31,7 @@ import {
   useStaff,
   useUpdateStaff,
   type EmploymentStatus,
+  type QualificationCategory,
   type StaffInput,
   type StaffMember,
 } from "@/lib/api/hr";
@@ -50,6 +56,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function EmployeesPage() {
+  const router = useRouter();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"" | EmploymentStatus>("");
@@ -212,7 +219,11 @@ export default function EmployeesPage() {
                 </StateRow>
               ) : (
                 rows.map((s, i) => (
-                  <tr key={s.id} className="border-b border-line/60 last:border-0">
+                  <tr
+                    key={s.id}
+                    className="cursor-pointer border-b border-line/60 last:border-0 hover:bg-parchment/40"
+                    onClick={() => router.push(`/hr/employees/${s.id}`)}
+                  >
                     <td className="px-4 py-3 text-ink-muted">{(page - 1) * limit + i + 1}</td>
                     <td className="px-4 py-3 font-medium text-ink">
                       {`${s.lastName} ${s.firstName}${s.middleName ? " " + s.middleName : ""}`}
@@ -227,8 +238,15 @@ export default function EmployeesPage() {
                         {EMPLOYMENT_STATUS_LABELS[s.status]}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
+                          title="Batafsil"
+                          onClick={() => router.push(`/hr/employees/${s.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
                         <button
                           className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
                           title="Tahrirlash"
@@ -366,6 +384,8 @@ interface FormState {
   roleName: string;
   salary: number | null;
   status: EmploymentStatus;
+  qualificationCategory: "" | QualificationCategory;
+  qualificationDate: string;
   salaryChangeReason: string;
 }
 
@@ -373,7 +393,8 @@ const EMPTY_FORM: FormState = {
   firstName: "", firstNameCyrillic: "", lastName: "", lastNameCyrillic: "",
   middleName: "", middleNameCyrillic: "", email: "", phone: "", gender: "",
   birthDate: "", hireDate: "", passportSeries: "", pinfl: "", departmentId: "",
-  positionId: "", roleName: "", salary: null, status: "active", salaryChangeReason: "",
+  positionId: "", roleName: "", salary: null, status: "active",
+  qualificationCategory: "", qualificationDate: "", salaryChangeReason: "",
 };
 
 function StaffFormModal({
@@ -419,6 +440,8 @@ function StaffFormModal({
         roleName: "",
         salary: Number(editing.salary) || 0,
         status: editing.status,
+        qualificationCategory: editing.qualificationCategory ?? "",
+        qualificationDate: editing.qualificationDate ?? "",
         salaryChangeReason: "",
       });
     } else {
@@ -480,6 +503,8 @@ function StaffFormModal({
       roleName: form.roleName || undefined,
       salary: form.salary ?? 0,
       status: form.status,
+      qualificationCategory: form.qualificationCategory || undefined,
+      qualificationDate: form.qualificationDate || undefined,
       salaryChangeReason: form.salaryChangeReason.trim() || undefined,
     };
 
@@ -577,6 +602,28 @@ function StaffFormModal({
             onChange={(e) => set("status", e.target.value as EmploymentStatus)}
             options={[{ value: "active", label: "Faol" }, { value: "dismissed", label: "Faol emas" }, { value: "on_leave", label: "Ta'tilda" }]}
           />
+        </Field>
+
+        <Field label="Malaka toifasi (o‘qituvchi uchun)">
+          <Select
+            value={form.qualificationCategory}
+            onChange={(e) => {
+              const value = e.target.value as "" | QualificationCategory;
+              set("qualificationCategory", value);
+              // Toifaga mos lavozimni avtomatik taklif qilamiz (agar topilsa).
+              if (value) {
+                const match = (positions ?? []).find((p) => p.title === QUALIFICATION_POSITION[value]);
+                if (match) set("positionId", match.id);
+              }
+            }}
+            options={[
+              { value: "", label: "Toifasiz" },
+              ...QUALIFICATION_CATEGORIES.map((c) => ({ value: c, label: QUALIFICATION_LABELS[c] })),
+            ]}
+          />
+        </Field>
+        <Field label="Toifa berilgan sana">
+          <DatePicker value={form.qualificationDate} onChange={(iso) => set("qualificationDate", iso)} />
         </Field>
 
         {editing && (

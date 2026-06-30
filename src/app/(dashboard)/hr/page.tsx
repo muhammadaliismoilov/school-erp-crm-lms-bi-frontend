@@ -21,6 +21,7 @@ import {
   Gauge,
   Sprout,
   BarChart3,
+  GraduationCap,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -33,6 +34,7 @@ interface HrCard {
 
 const CARDS: HrCard[] = [
   { label: "Xodimlar", href: "/hr/employees", icon: Users, ready: true },
+  { label: "O'qituvchilar", href: "/hr/teachers", icon: GraduationCap, ready: true },
   { label: "Vazifalar", href: "/hr/tasks", icon: ClipboardList, ready: true },
   { label: "Davomat", href: "/hr/attendance", icon: CalendarCheck, ready: true },
   { label: "Ta'tillar", href: "/hr/leaves", icon: Plane, ready: true },

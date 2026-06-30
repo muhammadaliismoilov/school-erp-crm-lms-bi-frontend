@@ -13,8 +13,11 @@ export interface Department {
   name: string;
   code: string;
   description: string | null;
+  schoolId: string | null;
+  schoolName: string | null;
   filialId: string | null;
   filialLabel: string | null;
+  ownerLabel: string | null;
   parentId: string | null;
   parentName: string | null;
   telegramChatId: string | null;
@@ -46,6 +49,7 @@ export interface DepartmentListParams {
 export interface DepartmentInput {
   name: string;
   description?: string;
+  schoolId?: string;
   filialId?: string;
   parentId?: string;
   telegramChatId?: string;

@@ -5,6 +5,8 @@ function node(id: string, children: BranchNode[] = []): BranchNode {
   return {
     id,
     name: id,
+    schoolId: null,
+    schoolName: null,
     parentId: null,
     parentName: null,
     isHeadOffice: false,

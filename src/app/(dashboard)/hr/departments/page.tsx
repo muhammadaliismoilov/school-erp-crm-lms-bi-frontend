@@ -23,7 +23,7 @@ import {
   type Department,
   type DepartmentInput,
 } from "@/lib/api/hr-departments";
-import { useBranchOptions } from "@/lib/api/hr-branches";
+import { useBranchOptions, useSchoolOptions } from "@/lib/api/hr-branches";
 import { Badge, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,7 +119,7 @@ export default function DepartmentsPage() {
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
                 <th className="px-4 py-3 font-medium">№</th>
                 <th className="px-4 py-3 font-medium">Nomi</th>
-                <th className="px-4 py-3 font-medium">Filial</th>
+                <th className="px-4 py-3 font-medium">Maktab / Filial</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 text-right font-medium">Amallar</th>
               </tr>
@@ -152,7 +152,7 @@ export default function DepartmentsPage() {
                         {d.name}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-ink-soft">{d.filialLabel ?? "—"}</td>
+                    <td className="px-4 py-3 text-ink-soft">{d.ownerLabel ?? "—"}</td>
                     <td className="px-4 py-3">
                       <Badge tone={DEPARTMENT_STATUS_TONE[d.status]}>
                         {DEPARTMENT_STATUS_LABELS[d.status]}
@@ -274,11 +274,13 @@ function DepartmentDrawer({
   const createDepartment = useCreateDepartment();
   const updateDepartment = useUpdateDepartment();
   const { data: branches } = useBranchOptions();
+  const { data: schools } = useSchoolOptions();
   const { data: departmentList } = useDepartmentList({ page: 1, limit: 100 });
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [filialId, setFilialId] = useState("");
+  // Egasi: "school:<id>" (bosh ofis) yoki "branch:<id>" (filial).
+  const [ownerValue, setOwnerValue] = useState("");
   const [parentId, setParentId] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -288,22 +290,29 @@ function DepartmentDrawer({
     if (editing) {
       setName(editing.name);
       setDescription(editing.description ?? "");
-      setFilialId(editing.filialId ?? "");
+      setOwnerValue(
+        editing.filialId ? `branch:${editing.filialId}` : editing.schoolId ? `school:${editing.schoolId}` : "",
+      );
       setParentId(editing.parentId ?? "");
       setTelegramChatId(editing.telegramChatId ?? "");
     } else {
       setName("");
       setDescription("");
-      setFilialId("");
+      setOwnerValue("");
       setParentId("");
       setTelegramChatId("");
     }
     setError(null);
   }, [open, editing]);
 
-  const branchOptions = useMemo(
-    () => [{ value: "", label: "Filialni tanlang" }, ...(branches ?? []).map((b) => ({ value: b.id, label: b.label }))],
-    [branches],
+  // Birlashgan ro'yxat: avval maktablar (bosh ofis), keyin filiallar.
+  const ownerOptions = useMemo(
+    () => [
+      { value: "", label: "Maktab yoki filialni tanlang" },
+      ...(schools ?? []).map((s) => ({ value: `school:${s.id}`, label: `${s.label} (Bosh ofis)` })),
+      ...(branches ?? []).map((b) => ({ value: `branch:${b.id}`, label: b.label })),
+    ],
+    [schools, branches],
   );
   const parentOptions = useMemo(
     () => [
@@ -320,10 +329,16 @@ function DepartmentDrawer({
       setError("Bo‘lim nomini kiriting");
       return;
     }
+    if (!ownerValue) {
+      setError("Maktab yoki filialni tanlang");
+      return;
+    }
+    const [ownerType, ownerId] = ownerValue.split(":");
     const payload: DepartmentInput = {
       name: name.trim(),
       description: description.trim() || undefined,
-      filialId: filialId || undefined,
+      schoolId: ownerType === "school" ? ownerId : undefined,
+      filialId: ownerType === "branch" ? ownerId : undefined,
       parentId: parentId || undefined,
       telegramChatId: telegramChatId.trim() || undefined,
     };
@@ -370,8 +385,11 @@ function DepartmentDrawer({
             className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted/70 transition-colors focus:border-amber focus-visible:focus-ring"
           />
         </Field>
-        <Field label="Filial">
-          <Select value={filialId} onChange={(e) => setFilialId(e.target.value)} options={branchOptions} />
+        <Field label="Maktab / Filial" required>
+          <Select value={ownerValue} onChange={(e) => setOwnerValue(e.target.value)} options={ownerOptions} />
+          <p className="mt-1 text-xs text-ink-muted">
+            Asosiy maktab (bosh ofis) yoki uning filiali — bo‘lim shunga tegishli bo‘ladi.
+          </p>
         </Field>
         <Field label="Ota bo‘lim">
           <Select value={parentId} onChange={(e) => setParentId(e.target.value)} options={parentOptions} />

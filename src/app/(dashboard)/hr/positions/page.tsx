@@ -23,7 +23,7 @@ import {
   type Position,
   type PositionInput,
 } from "@/lib/api/hr-positions";
-import { useBranchOptions } from "@/lib/api/hr-branches";
+import { useBranchOptions, useSchoolOptions } from "@/lib/api/hr-branches";
 import { useDepartmentList } from "@/lib/api/hr-departments";
 import { Badge, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -264,11 +264,13 @@ function PositionDrawer({
   const createPosition = useCreatePosition();
   const updatePosition = useUpdatePosition();
   const { data: branches } = useBranchOptions();
+  const { data: schools } = useSchoolOptions();
   const { data: departmentList } = useDepartmentList({ page: 1, limit: 100 });
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [filialId, setFilialId] = useState("");
+  // Egasi: "school:<id>" (bosh ofis) yoki "branch:<id>" (filial). Bo'sh = belgilanmagan.
+  const [ownerValue, setOwnerValue] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [baseSalary, setBaseSalary] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -278,22 +280,28 @@ function PositionDrawer({
     if (editing) {
       setTitle(editing.title);
       setDescription(editing.description ?? "");
-      setFilialId(editing.filialId ?? "");
+      setOwnerValue(
+        editing.filialId ? `branch:${editing.filialId}` : editing.schoolId ? `school:${editing.schoolId}` : "",
+      );
       setDepartmentId(editing.departmentId ?? "");
       setBaseSalary(Number(editing.baseSalary) || 0);
     } else {
       setTitle("");
       setDescription("");
-      setFilialId("");
+      setOwnerValue("");
       setDepartmentId("");
       setBaseSalary(null);
     }
     setError(null);
   }, [open, editing]);
 
-  const branchOptions = useMemo(
-    () => [{ value: "", label: "Filialni tanlang" }, ...(branches ?? []).map((b) => ({ value: b.id, label: b.label }))],
-    [branches],
+  const ownerOptions = useMemo(
+    () => [
+      { value: "", label: "Maktab yoki filialni tanlang" },
+      ...(schools ?? []).map((s) => ({ value: `school:${s.id}`, label: `${s.label} (Bosh ofis)` })),
+      ...(branches ?? []).map((b) => ({ value: `branch:${b.id}`, label: b.label })),
+    ],
+    [schools, branches],
   );
   const deptOptions = useMemo(
     () => [{ value: "", label: "Bo‘limni tanlang" }, ...(departmentList?.items ?? []).map((d) => ({ value: d.id, label: d.name }))],
@@ -309,10 +317,12 @@ function PositionDrawer({
       setError("Bo‘limni tanlang");
       return;
     }
+    const [ownerType, ownerId] = ownerValue ? ownerValue.split(":") : ["", ""];
     const payload: PositionInput = {
       title: title.trim(),
       description: description.trim() || undefined,
-      filialId: filialId || undefined,
+      schoolId: ownerType === "school" ? ownerId : undefined,
+      filialId: ownerType === "branch" ? ownerId : undefined,
       departmentId,
       baseSalary: baseSalary ?? undefined,
     };
@@ -359,8 +369,11 @@ function PositionDrawer({
             className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted/70 transition-colors focus:border-amber focus-visible:focus-ring"
           />
         </Field>
-        <Field label="Filial">
-          <Select value={filialId} onChange={(e) => setFilialId(e.target.value)} options={branchOptions} />
+        <Field label="Maktab / Filial">
+          <Select value={ownerValue} onChange={(e) => setOwnerValue(e.target.value)} options={ownerOptions} />
+          <p className="mt-1 text-xs text-ink-muted">
+            Asosiy maktab (bosh ofis) yoki filial — lavozim shunga tegishli bo‘ladi.
+          </p>
         </Field>
         <Field label="Bo‘lim" required>
           <Select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} options={deptOptions} />

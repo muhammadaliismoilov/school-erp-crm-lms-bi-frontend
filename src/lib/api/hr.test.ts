@@ -57,6 +57,8 @@ describe("hr types", () => {
       hireDate: "2026-06-01",
       status: "active",
       salary: 5000000,
+      qualificationCategory: "oliy",
+      qualificationDate: "2025-06-01",
       createdAt: "2026-06-01T00:00:00.000Z",
     };
     expect(s.salary).toBe(5000000);

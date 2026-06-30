@@ -16,6 +16,7 @@ import {
 import {
   PAGE_SIZES,
   useBranchOptions,
+  useSchoolOptions,
   useBranchTree,
   useCreateBranch,
   useDeleteBranch,
@@ -308,8 +309,10 @@ function BranchDrawer({
   const createBranch = useCreateBranch();
   const updateBranch = useUpdateBranch();
   const { data: options } = useBranchOptions();
+  const { data: schools } = useSchoolOptions();
 
   const [name, setName] = useState("");
+  const [schoolId, setSchoolId] = useState("");
   const [parentId, setParentId] = useState("");
   const [isHeadOffice, setIsHeadOffice] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -318,16 +321,22 @@ function BranchDrawer({
     if (!open) return;
     if (editing) {
       setName(editing.name);
+      setSchoolId(editing.schoolId ?? "");
       setParentId(editing.parentId ?? "");
       setIsHeadOffice(editing.isHeadOffice);
     } else {
       setName("");
+      setSchoolId("");
       setParentId("");
       setIsHeadOffice(false);
     }
     setError(null);
   }, [open, editing]);
 
+  const schoolOptions = useMemo(
+    () => [{ value: "", label: "Maktabni tanlang" }, ...(schools ?? []).map((s) => ({ value: s.id, label: s.label }))],
+    [schools],
+  );
   const parentOptions = useMemo(
     () => [
       { value: "", label: "Ota filialni tanlang" },
@@ -341,8 +350,13 @@ function BranchDrawer({
       setError("Filial nomini kiriting");
       return;
     }
+    if (!schoolId) {
+      setError("Maktabni tanlang");
+      return;
+    }
     const payload: BranchInput = {
       name: name.trim(),
+      schoolId,
       parentId: parentId || undefined,
       isHeadOffice,
     };
@@ -382,6 +396,13 @@ function BranchDrawer({
             Nomi <span className="text-negative">*</span>
           </label>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Filial nomini kiriting" />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink">
+            Maktab (bosh ofis) <span className="text-negative">*</span>
+          </label>
+          <Select value={schoolId} onChange={(e) => setSchoolId(e.target.value)} options={schoolOptions} />
+          <p className="mt-1 text-xs text-ink-muted">Boshqaruv bo‘limida yaratilgan maktab — filial shu maktabga tegishli bo‘ladi.</p>
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-ink">Ota filial</label>

@@ -11,6 +11,25 @@ export type EmploymentStatus = (typeof EMPLOYMENT_STATUSES)[number];
 
 export type Gender = "male" | "female";
 
+/** O'qituvchi malaka toifasi (past→yuqori). */
+export const QUALIFICATION_CATEGORIES = ["mutaxassis", "ikkinchi", "birinchi", "oliy"] as const;
+export type QualificationCategory = (typeof QUALIFICATION_CATEGORIES)[number];
+
+export const QUALIFICATION_LABELS: Record<QualificationCategory, string> = {
+  mutaxassis: "Mutaxassis (toifasiz)",
+  ikkinchi: "Ikkinchi toifa",
+  birinchi: "Birinchi toifa",
+  oliy: "Oliy toifa",
+};
+
+/** Toifaga mos rasmiy lavozim nomi (formada taklif uchun). */
+export const QUALIFICATION_POSITION: Record<QualificationCategory, string> = {
+  mutaxassis: "O‘qituvchi",
+  ikkinchi: "Katta o‘qituvchi",
+  birinchi: "Yetakchi o‘qituvchi",
+  oliy: "Bosh o‘qituvchi",
+};
+
 export interface Department {
   id: string;
   name: string;
@@ -47,6 +66,8 @@ export interface StaffMember {
   hireDate: string;
   status: EmploymentStatus;
   salary: number;
+  qualificationCategory: QualificationCategory | null;
+  qualificationDate: string | null;
   createdAt: string;
 }
 
@@ -89,6 +110,8 @@ export interface StaffInput {
   hireDate: string;
   status?: EmploymentStatus;
   salary?: number;
+  qualificationCategory?: QualificationCategory | "";
+  qualificationDate?: string;
   roleName?: string;
   salaryChangeReason?: string;
 }
@@ -124,6 +147,9 @@ const api = {
   createStaff(input: StaffInput): Promise<CreatedStaffResult> {
     return apiRequest<CreatedStaffResult>("/hr/staff", { method: "POST", body: input });
   },
+  getStaff(id: string): Promise<StaffMember> {
+    return apiRequest<StaffMember>(`/hr/staff/${id}`);
+  },
   updateStaff(id: string, input: Partial<StaffInput>): Promise<StaffMember> {
     return apiRequest<StaffMember>(`/hr/staff/${id}`, { method: "PATCH", body: input });
   },
@@ -157,6 +183,14 @@ export function useStaff(params: StaffListParams) {
     queryFn: () => api.listStaff(params),
     placeholderData: keepPreviousData,
     staleTime: 20_000,
+  });
+}
+
+export function useStaffMember(id: string | null) {
+  return useQuery({
+    queryKey: [...STAFF_KEY, "detail", id],
+    queryFn: () => api.getStaff(id as string),
+    enabled: !!id,
   });
 }
 
