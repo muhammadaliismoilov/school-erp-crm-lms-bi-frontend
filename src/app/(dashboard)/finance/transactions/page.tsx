@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownLeft,
@@ -11,6 +11,7 @@ import {
   ChevronsRight,
   Download,
   Eye,
+  FileClock,
   Pencil,
   Plus,
   Scale,
@@ -46,12 +47,14 @@ import {
   type TransactionType,
 } from "@/lib/api/transactions";
 import { useUsers } from "@/lib/api/users";
+import { useCreateChangeRequest } from "@/lib/api/transaction-change-requests";
 import { useAuthStore } from "@/lib/auth/store";
 import { formatDateDMY } from "@/lib/format";
 import { formatMoney } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Drawer } from "@/components/ui/drawer";
@@ -102,6 +105,8 @@ export default function TransactionsPage() {
   const [viewing, setViewing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState<Transaction | null>(null);
+  const [requestToast, setRequestToast] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
   const filters: TransactionListParams = useMemo(
@@ -410,7 +415,7 @@ export default function TransactionsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          {canModify(r.createdBy) && (
+                          {canModify(r.createdBy) ? (
                             <>
                               <button
                                 className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
@@ -427,6 +432,14 @@ export default function TransactionsPage() {
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </>
+                          ) : (
+                            <button
+                              className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
+                              title="O‘zgartirish so‘rovi"
+                              onClick={() => setRequesting(r)}
+                            >
+                              <FileClock className="h-4 w-4" />
+                            </button>
                           )}
                         </div>
                       </td>
@@ -538,7 +551,149 @@ export default function TransactionsPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* O‘zgartirish so‘rovi (yozuv egasi bo‘lmaganlar uchun) */}
+      <RequestChangeModal
+        transaction={requesting}
+        onClose={() => setRequesting(null)}
+        onDone={() => {
+          setRequesting(null);
+          setRequestToast("O‘zgartirish so‘rovi yuborildi");
+        }}
+      />
+
+      {requestToast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-ink shadow-lg">
+          <span className="mr-2 text-positive">✓</span>
+          {requestToast}
+        </div>
+      )}
     </div>
+  );
+}
+
+function RequestChangeModal({
+  transaction,
+  onClose,
+  onDone,
+}: {
+  transaction: Transaction | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const createRequest = useCreateChangeRequest();
+  const [mode, setMode] = useState<"update" | "delete">("update");
+  const [amount, setAmount] = useState<number | null>(null);
+  const [note, setNote] = useState("");
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (transaction) {
+      setMode("update");
+      setAmount(transaction.amount);
+      setNote(transaction.note ?? "");
+      setReason("");
+      setError(null);
+    }
+  }, [transaction]);
+
+  async function submit() {
+    if (!transaction) return;
+    if (reason.trim().length === 0) {
+      setError("So‘rov sababini yozing");
+      return;
+    }
+    const proposedChanges: Record<string, unknown> = {};
+    if (mode === "update") {
+      if (amount != null && amount !== transaction.amount) proposedChanges.amount = amount;
+      if (note.trim() !== (transaction.note ?? "")) proposedChanges.note = note.trim();
+      if (Object.keys(proposedChanges).length === 0) {
+        setError("Kamida bitta qiymatni o‘zgartiring");
+        return;
+      }
+    }
+    try {
+      await createRequest.mutateAsync({
+        transactionId: transaction.id,
+        requestType: mode,
+        reason: reason.trim(),
+        proposedChanges: mode === "update" ? proposedChanges : undefined,
+      });
+      onDone();
+    } catch {
+      setError("So‘rov yuborishda xatolik yuz berdi");
+    }
+  }
+
+  return (
+    <Modal
+      open={!!transaction}
+      onClose={onClose}
+      title="O‘zgartirish so‘rovi"
+      subtitle="Bu yozuv egasi siz emassiz — o‘zgarish so‘rovi yuboriladi"
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={onClose}>
+            Bekor qilish
+          </Button>
+          <Button onClick={submit} loading={createRequest.isPending}>
+            So‘rov yuborish
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("update")}
+            className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+              mode === "update" ? "border-amber bg-amber/10 text-ink" : "border-line text-ink-muted"
+            }`}
+          >
+            Tahrirlash
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("delete")}
+            className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+              mode === "delete" ? "border-rose-400 bg-rose-500/10 text-ink" : "border-line text-ink-muted"
+            }`}
+          >
+            O‘chirish
+          </button>
+        </div>
+
+        {mode === "update" && (
+          <>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink">Yangi summa</label>
+              <NumberInput value={amount} onChange={setAmount} placeholder="0" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-ink">Yangi izoh</label>
+              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Izoh" />
+            </div>
+          </>
+        )}
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-ink">So‘rov sababi</label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            placeholder="Nima uchun o‘zgartirish kerakligini yozing"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted/70 transition-colors focus:border-amber focus-visible:focus-ring"
+          />
+        </div>
+
+        {error && (
+          <div className="text-sm text-negative">{error}</div>
+        )}
+      </div>
+    </Modal>
   );
 }
 

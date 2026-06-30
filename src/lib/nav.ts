@@ -4,6 +4,14 @@ import {
   Users,
   CalendarCheck,
   Wallet,
+  Banknote,
+  FileClock,
+  Briefcase,
+  BriefcaseBusiness,
+  IdCard,
+  Network,
+  Plane,
+  ListTodo,
   UserPlus,
   TerminalSquare,
   CalendarDays,
@@ -128,7 +136,27 @@ export const FINANCE_GROUP: NavGroup = {
     { href: "/finance/student-payments", labelKey: "nav.finance.studentPayments", icon: Receipt, permission: "finance.read" },
     { href: "/finance/debts", labelKey: "nav.finance.debts", icon: TrendingDown, permission: "finance.read" },
     { href: "/finance/payment-types", labelKey: "nav.finance.paymentTypes", icon: CreditCard, permission: "finance.read" },
+    { href: "/finance/salaries", labelKey: "nav.finance.salaries", icon: Banknote, permission: "finance.read" },
+    { href: "/finance/transactions/update-requests", labelKey: "nav.finance.updateRequests", icon: FileClock, permission: "finance.read" },
     { href: "/finance", labelKey: "nav.finance.contracts", icon: ClipboardList, permission: "finance.read" },
+  ],
+};
+
+/** "HR" section — staff management. */
+export const HR_GROUP: NavGroup = {
+  id: "hr",
+  labelKey: "nav.hr",
+  icon: Briefcase,
+  permission: "hr.read",
+  children: [
+    { href: "/hr", labelKey: "nav.hr.dashboard", icon: LayoutDashboard, permission: "hr.read" },
+    { href: "/hr/employees", labelKey: "nav.hr.employees", icon: IdCard, permission: "hr.read" },
+    { href: "/hr/departments", labelKey: "nav.hr.departments", icon: Network, permission: "hr.read" },
+    { href: "/hr/branches", labelKey: "nav.hr.branches", icon: Building2, permission: "hr.read" },
+    { href: "/hr/positions", labelKey: "nav.hr.positions", icon: BriefcaseBusiness, permission: "hr.read" },
+    { href: "/hr/leaves", labelKey: "nav.hr.leaves", icon: Plane, permission: "hr.read" },
+    { href: "/hr/tasks", labelKey: "nav.hr.tasks", icon: ListTodo, permission: "hr.read" },
+    { href: "/hr/attendance", labelKey: "nav.hr.attendance", icon: CalendarCheck, permission: "hr.read" },
   ],
 };
 
@@ -143,6 +171,7 @@ export const NAV_ITEMS: NavEntry[] = [
     permission: "attendance.read",
   },
   FINANCE_GROUP,
+  HR_GROUP,
   {
     id: "crm",
     labelKey: "nav.crm",
