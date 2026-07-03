@@ -183,10 +183,14 @@ export const NAV_ITEMS: NavEntry[] = [
   { href: "/explorer", labelKey: "nav.explorer", icon: TerminalSquare, badge: "explorer" },
   ACADEMIC_GROUP,
   {
-    href: "/attendance",
+    id: "attendance",
     labelKey: "nav.attendance",
     icon: CalendarCheck,
     permission: "attendance.read",
+    children: [
+      { href: "/attendance/teacher", labelKey: "nav.att.teacher", icon: ClipboardList },
+      { href: "/attendance", labelKey: "nav.att.daily", icon: CalendarCheck },
+    ],
   },
   FINANCE_GROUP,
   HR_GROUP,
