@@ -2,6 +2,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Users,
+  Router,
   CalendarCheck,
   Wallet,
   Banknote,
@@ -190,6 +191,12 @@ export const NAV_ITEMS: NavEntry[] = [
     children: [
       { href: "/attendance/teacher", labelKey: "nav.att.teacher", icon: ClipboardList },
       { href: "/attendance", labelKey: "nav.att.daily", icon: CalendarCheck },
+      {
+        href: "/attendance/devices",
+        labelKey: "nav.att.devices",
+        icon: Router,
+        permission: "turnstile-devices.read",
+      },
     ],
   },
   FINANCE_GROUP,
