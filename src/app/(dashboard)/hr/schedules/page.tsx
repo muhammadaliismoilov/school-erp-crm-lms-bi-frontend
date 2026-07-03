@@ -85,8 +85,8 @@ export default function SchedulesPage() {
   return (
     <div className="stagger">
       <PageHeader
-        title="Jadvallar"
-        subtitle="Ish jadvallari shablonlari"
+        title="Jadval"
+        subtitle="Tavsif"
         action={
           <Button
             variant="accent"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -42,6 +43,16 @@ import {
   type StaffCertificate,
   type StaffCertificateInput,
 } from "@/lib/api/hr-staff-portfolio";
+import {
+  DEGREE_LABELS,
+  EMPLOYMENT_TYPE_LABELS,
+  TEACHER_STATUS_LABELS,
+  TEACHER_STATUS_TONE,
+  WORK_TYPE_LABELS,
+  useTeacherByStaff,
+  type Teacher,
+} from "@/lib/api/hr-teachers";
+import { TeacherDrawer } from "@/components/hr/teacher-form-drawer";
 import { Badge, Card, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -135,6 +146,7 @@ export default function EmployeeDetailPage() {
 // ─── Ma'lumotlar tab ──────────────────────────────────────────────────────────
 
 function OverviewTab({ staff }: { staff: StaffMember }) {
+  const { data: teacher } = useTeacherByStaff(staff.id);
   const rows: { label: string; value: string }[] = [
     { label: "Bo‘lim", value: staff.department?.name ?? "—" },
     { label: "Lavozim", value: staff.position?.title ?? "—" },
@@ -151,7 +163,57 @@ function OverviewTab({ staff }: { staff: StaffMember }) {
   ];
 
   return (
+    <div className="space-y-5">
+      <Card className="p-5">
+        <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((r) => (
+            <div key={r.label}>
+              <dt className="text-xs uppercase tracking-wide text-ink-muted">{r.label}</dt>
+              <dd className="mt-0.5 text-sm font-medium text-ink">{r.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </Card>
+
+      {teacher && <TeacherInfoCard teacher={teacher} />}
+    </div>
+  );
+}
+
+// ─── O'qituvchi ma'lumotlari (xodim o'qituvchi bo'lsa) ────────────────────────
+
+function TeacherInfoCard({ teacher }: { teacher: Teacher }) {
+  const qc = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const rows: { label: string; value: string }[] = [
+    { label: "Ish turi", value: WORK_TYPE_LABELS[teacher.workType] },
+    { label: "Daraja", value: teacher.degree ? DEGREE_LABELS[teacher.degree] : "—" },
+    { label: "Ishlash turi", value: EMPLOYMENT_TYPE_LABELS[teacher.employmentType] },
+    { label: "Tajriba (yil)", value: String(teacher.experienceYears ?? 0) },
+    { label: "Dars uchun stavka", value: teacher.ratePerLesson ? formatMoney(teacher.ratePerLesson) : "—" },
+    { label: "Ish boshlagan sana", value: teacher.startDate ? formatDateDMY(teacher.startDate) : "—" },
+    { label: "Ish tugagan sana", value: teacher.endDate ? formatDateDMY(teacher.endDate) : "—" },
+  ];
+
+  const roles: { label: string; on: boolean }[] = [
+    { label: "Fan o'qituvchisi", on: teacher.isSubjectTeacher },
+    { label: "Yordamchi o'qituvchi", on: teacher.isAssistantTeacher },
+    { label: "MBR", on: teacher.isMbr },
+    { label: "Qo'shimcha dars", on: teacher.isExtraLesson },
+    { label: "Sinf rahbari", on: teacher.isClassLeader },
+  ];
+  const activeRoles = roles.filter((r) => r.on);
+
+  return (
+    <>
     <Card className="p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <h2 className="font-display text-base font-semibold text-ink">O'qituvchi ma'lumotlari</h2>
+        <Badge tone={TEACHER_STATUS_TONE[teacher.status]}>{TEACHER_STATUS_LABELS[teacher.status]}</Badge>
+        <Button variant="secondary" size="sm" className="ml-auto" onClick={() => setEditOpen(true)}>
+          <Pencil className="h-4 w-4" /> Tahrirlash
+        </Button>
+      </div>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((r) => (
           <div key={r.label}>
@@ -160,7 +222,38 @@ function OverviewTab({ staff }: { staff: StaffMember }) {
           </div>
         ))}
       </dl>
+      <div className="mt-4">
+        <dt className="mb-1.5 text-xs uppercase tracking-wide text-ink-muted">Rollar</dt>
+        {activeRoles.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {activeRoles.map((r) => (
+              <Badge key={r.label} tone="accent">{r.label}</Badge>
+            ))}
+          </div>
+        ) : (
+          <span className="text-sm text-ink-muted">—</span>
+        )}
+      </div>
+      {teacher.note && (
+        <div className="mt-4">
+          <dt className="mb-1 text-xs uppercase tracking-wide text-ink-muted">Izoh</dt>
+          <dd className="text-sm text-ink">{teacher.note}</dd>
+        </div>
+      )}
     </Card>
+
+    <TeacherDrawer
+      open={editOpen}
+      editing={teacher}
+      onClose={() => setEditOpen(false)}
+      onSaved={() => {
+        setEditOpen(false);
+        // O'qituvchi shaxsiy maydonlari (ism, rasm) xodimga saqlanadi — xodim
+        // kartochkasi sarlavhasi ham yangilanishi uchun staff so'rovini yangilaymiz.
+        qc.invalidateQueries({ queryKey: ["hr", "staff"] });
+      }}
+    />
+    </>
   );
 }
 

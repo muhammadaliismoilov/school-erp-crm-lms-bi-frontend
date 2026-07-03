@@ -5,12 +5,12 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { apiRequest } from "./client";
+import { QUALIFICATION_LABELS, type QualificationCategory } from "./hr";
 
 export type TeacherWorkType = "full" | "hourly";
 export type TeacherDegree = "secondary_special" | "bachelor" | "master" | "phd" | "doctor";
 export type TeacherEmploymentType = "primary" | "secondary";
 export type TeacherStatus = "active" | "on_leave" | "dismissed";
-export type TeacherCategory = "oliy" | "first" | "second" | "special";
 export type TeacherGender = "male" | "female";
 
 export interface Teacher {
@@ -26,11 +26,12 @@ export interface Teacher {
   pinfl: string | null;
   phone: string | null;
   email: string | null;
+  photoUrl: string | null;
   workType: TeacherWorkType;
   degree: TeacherDegree | null;
   employmentType: TeacherEmploymentType;
   status: TeacherStatus;
-  category: TeacherCategory | null;
+  category: QualificationCategory | null;
   experienceYears: number;
   ratePerLesson: number;
   startDate: string | null;
@@ -69,7 +70,7 @@ export interface TeacherListParams {
   page?: number;
   limit?: number;
   search?: string;
-  category?: TeacherCategory;
+  category?: QualificationCategory;
   workType?: TeacherWorkType;
   status?: TeacherStatus;
 }
@@ -84,12 +85,13 @@ export interface TeacherInput {
   pinfl?: string;
   phone?: string;
   email?: string;
+  photoUrl?: string;
   staffMemberId?: string;
   workType?: TeacherWorkType;
   degree?: TeacherDegree;
   employmentType?: TeacherEmploymentType;
   status?: TeacherStatus;
-  category?: TeacherCategory;
+  category?: QualificationCategory;
   experienceYears?: number;
   ratePerLesson?: number;
   startDate?: string;
@@ -119,6 +121,9 @@ const api = {
   stats(): Promise<TeacherStats> {
     return apiRequest<TeacherStats>("/hr/teachers/stats");
   },
+  byStaff(staffMemberId: string): Promise<Teacher | null> {
+    return apiRequest<Teacher | null>(`/hr/teachers/by-staff/${staffMemberId}`);
+  },
   create(input: TeacherInput): Promise<Teacher> {
     return apiRequest<Teacher>("/hr/teachers", { method: "POST", body: input });
   },
@@ -145,6 +150,16 @@ export function useTeacherStats() {
   return useQuery({
     queryKey: [...KEY, "stats"],
     queryFn: () => api.stats(),
+    staleTime: 20_000,
+  });
+}
+
+/** Xodim IDsi bo'yicha bog'langan o'qituvchi (bo'lmasa `null`). */
+export function useTeacherByStaff(staffMemberId: string | null | undefined) {
+  return useQuery({
+    queryKey: [...KEY, "by-staff", staffMemberId],
+    queryFn: () => api.byStaff(staffMemberId as string),
+    enabled: !!staffMemberId,
     staleTime: 20_000,
   });
 }
@@ -203,11 +218,7 @@ export const TEACHER_STATUS_TONE: Record<TeacherStatus, "positive" | "caution" |
   dismissed: "negative",
 };
 
-export const CATEGORY_LABELS: Record<TeacherCategory, string> = {
-  oliy: "Oliy toifali",
-  first: "1-toifa",
-  second: "2-toifa",
-  special: "Maxsus",
-};
+// Malaka toifasi yagona manba — xodim (StaffMember) enum'i bilan birlashtirildi.
+export const CATEGORY_LABELS = QUALIFICATION_LABELS;
 
 export const PAGE_SIZES = [10, 20, 50, 100] as const;

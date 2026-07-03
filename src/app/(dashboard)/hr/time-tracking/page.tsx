@@ -106,7 +106,7 @@ export default function TimeTrackingPage() {
   return (
     <div className="stagger">
       <PageHeader
-        title="Ish vaqti hisobi"
+        title="Taqvimlar"
         subtitle="Xodimlar taqvimlarini boshqarish"
         action={
           <Button variant="accent" onClick={() => setCreateOpen(true)}>

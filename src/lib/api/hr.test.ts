@@ -50,6 +50,7 @@ describe("hr types", () => {
       pinfl: "12345678901234",
       phone: "+998901112233",
       email: "ali@example.uz",
+      photoUrl: null,
       departmentId: "d-1",
       department: { id: "d-1", name: "Oquv", code: "study" },
       positionId: "p-1",

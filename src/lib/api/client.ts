@@ -14,6 +14,43 @@ export function setApiLocale(locale: Locale): void {
   activeLocale = locale;
 }
 
+/**
+ * Aktiv filial (bir maktab ichida). Berilsa har so'rovga `X-Branch-Id` sarlavhasi
+ * qo'shiladi va backend shu filialga scope qiladi (aks holda foydalanuvchi default
+ * filiali ishlatiladi). Sahifa yangilanganda saqlanishi uchun localStorage'da.
+ */
+let activeBranchId: string | null =
+  typeof localStorage !== "undefined" ? localStorage.getItem("activeBranchId") : null;
+export function setActiveBranch(branchId: string | null): void {
+  activeBranchId = branchId && branchId.length > 0 ? branchId : null;
+  if (typeof localStorage !== "undefined") {
+    if (activeBranchId) localStorage.setItem("activeBranchId", activeBranchId);
+    else localStorage.removeItem("activeBranchId");
+  }
+}
+export function getActiveBranch(): string | null {
+  return activeBranchId;
+}
+
+/**
+ * Aktiv maktab (faqat GLOBAL/super-admin foydalanuvchi uchun). Berilsa har so'rovga
+ * `X-School-Id` sarlavhasi qo'shiladi; backend global userga shu maktab bo'yicha
+ * scope qiladi. Maktabга bog'langan user uchun e'tiborsiz (backend o'z maktabini
+ * ishlatadi). localStorage'da saqlanadi.
+ */
+let activeSchoolId: string | null =
+  typeof localStorage !== "undefined" ? localStorage.getItem("activeSchoolId") : null;
+export function setActiveSchool(schoolId: string | null): void {
+  activeSchoolId = schoolId && schoolId.length > 0 ? schoolId : null;
+  if (typeof localStorage !== "undefined") {
+    if (activeSchoolId) localStorage.setItem("activeSchoolId", activeSchoolId);
+    else localStorage.removeItem("activeSchoolId");
+  }
+}
+export function getActiveSchool(): string | null {
+  return activeSchoolId;
+}
+
 /** Called when refresh fails — wired by the auth provider to force logout. */
 let onAuthFailure: (() => void) | null = null;
 export function setAuthFailureHandler(handler: () => void): void {
@@ -95,6 +132,8 @@ export async function apiRequest<T>(
   if (auth && tokenStore.access) {
     headers.Authorization = `Bearer ${tokenStore.access}`;
   }
+  if (activeBranchId) headers["X-Branch-Id"] = activeBranchId;
+  if (activeSchoolId) headers["X-School-Id"] = activeSchoolId;
 
   const res = await fetch(buildUrl(path, query), {
     method,

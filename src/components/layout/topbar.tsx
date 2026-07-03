@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { useTheme } from "@/lib/theme/provider";
 import { initials } from "@/lib/utils";
 import { LanguageSwitcher } from "./language-switcher";
+import { SchoolSwitcher } from "./school-switcher";
 
 function ThemeToggle() {
   const { theme, toggle } = useTheme();
@@ -42,6 +43,7 @@ export function Topbar({ title }: { title: string }) {
       </h1>
 
       <div className="flex items-center gap-3">
+        <SchoolSwitcher />
         <ThemeToggle />
         <LanguageSwitcher />
         <Link

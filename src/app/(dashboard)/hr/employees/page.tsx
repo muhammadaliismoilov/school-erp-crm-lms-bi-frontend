@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Camera,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -14,6 +15,7 @@ import {
   Search,
   Trash2,
   Wand2,
+  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -47,6 +49,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
+import { useUploadFile, ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_SIZE } from "@/lib/api/files";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Barchasi" },
@@ -374,6 +377,7 @@ interface FormState {
   middleNameCyrillic: string;
   email: string;
   phone: string;
+  photoUrl: string;
   gender: "" | "male" | "female";
   birthDate: string;
   hireDate: string;
@@ -391,7 +395,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   firstName: "", firstNameCyrillic: "", lastName: "", lastNameCyrillic: "",
-  middleName: "", middleNameCyrillic: "", email: "", phone: "", gender: "",
+  middleName: "", middleNameCyrillic: "", email: "", phone: "", photoUrl: "", gender: "",
   birthDate: "", hireDate: "", passportSeries: "", pinfl: "", departmentId: "",
   positionId: "", roleName: "", salary: null, status: "active",
   qualificationCategory: "", qualificationDate: "", salaryChangeReason: "",
@@ -412,11 +416,35 @@ function StaffFormModal({
 }) {
   const createStaff = useCreateStaff();
   const updateStaff = useUpdateStaff();
+  const uploadPhoto = useUploadFile();
   const { data: departments } = useDepartments();
   const { data: positions } = usePositions();
   const { data: rolesData } = useRoles({ page: 1, limit: 100 });
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError(null);
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setPhotoError("Faqat rasm fayli (PNG, JPEG, WEBP)");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_SIZE) {
+      setPhotoError("Rasm hajmi 5 MB dan oshmasligi kerak");
+      return;
+    }
+    try {
+      const uploaded = await uploadPhoto.mutateAsync(file);
+      setForm((prev) => ({ ...prev, photoUrl: uploaded.url ?? prev.photoUrl }));
+    } catch {
+      setPhotoError("Rasm yuklashda xatolik");
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -430,6 +458,7 @@ function StaffFormModal({
         middleNameCyrillic: editing.middleNameCyrillic ?? "",
         email: editing.email ?? "",
         phone: editing.phone ?? "",
+        photoUrl: editing.photoUrl ?? "",
         gender: editing.gender ?? "",
         birthDate: editing.birthDate ?? "",
         hireDate: editing.hireDate ?? "",
@@ -493,6 +522,7 @@ function StaffFormModal({
       middleNameCyrillic: form.middleNameCyrillic.trim() || undefined,
       email: form.email.trim() || undefined,
       phone: form.phone.trim() || undefined,
+      photoUrl: form.photoUrl.trim() || undefined,
       gender: form.gender || undefined,
       birthDate: form.birthDate || undefined,
       hireDate: form.hireDate,
@@ -538,6 +568,50 @@ function StaffFormModal({
       }
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-col items-center gap-2 sm:col-span-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadPhoto.isPending}
+            className="group relative h-24 w-24 overflow-hidden rounded-full border border-line bg-surface transition-colors hover:border-amber focus-visible:focus-ring"
+            aria-label="Rasm yuklash"
+          >
+            {form.photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.photoUrl} alt="Xodim rasmi" className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-ink-muted">
+                <Camera className="h-7 w-7" />
+              </span>
+            )}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+              <Camera className="h-6 w-6 text-white" />
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_IMAGE_TYPES.join(",")}
+            onChange={handlePhotoChange}
+            className="hidden"
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-ink-muted">
+              {uploadPhoto.isPending ? "Yuklanmoqda..." : "Rasm (FaceID davomati uchun)"}
+            </span>
+            {form.photoUrl && !uploadPhoto.isPending && (
+              <button
+                type="button"
+                onClick={() => set("photoUrl", "")}
+                className="inline-flex items-center gap-0.5 text-xs text-negative hover:underline"
+              >
+                <X className="h-3 w-3" /> O'chirish
+              </button>
+            )}
+          </div>
+          {photoError && <span className="text-xs text-negative">{photoError}</span>}
+        </div>
+
         <TranslitPair
           label="Ism (lotin)" required latinValue={form.firstName}
           cyrLabel="Ism (kirill)" cyrValue={form.firstNameCyrillic}

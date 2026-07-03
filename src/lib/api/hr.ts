@@ -59,6 +59,7 @@ export interface StaffMember {
   pinfl: string | null;
   phone: string | null;
   email: string | null;
+  photoUrl: string | null;
   departmentId: string | null;
   department: Department | null;
   positionId: string | null;
@@ -101,6 +102,7 @@ export interface StaffInput {
   middleNameCyrillic?: string;
   email?: string;
   phone?: string;
+  photoUrl?: string;
   gender?: Gender;
   birthDate?: string;
   passportSeries?: string;

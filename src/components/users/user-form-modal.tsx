@@ -11,6 +11,7 @@ import {
   type UserInput,
 } from "@/lib/api/users";
 import { useRoles } from "@/lib/api/roles";
+import { useBranchOptions, useSchoolOptions } from "@/lib/api/hr-branches";
 import {
   ACCEPTED_IMAGE_TYPES,
   MAX_UPLOAD_SIZE,
@@ -42,6 +43,8 @@ interface FormState {
   workplace: string;
   profileImageUrl: string | null;
   profileImageFileId: string | null;
+  schoolId: string;
+  branchId: string;
 }
 
 const emptyForm: FormState = {
@@ -60,6 +63,8 @@ const emptyForm: FormState = {
   workplace: "",
   profileImageUrl: null,
   profileImageFileId: null,
+  schoolId: "",
+  branchId: "",
 };
 
 /** The user's current role name (from the dynamic roles table). */
@@ -84,6 +89,8 @@ function fromUser(user: User): FormState {
     workplace: user.workplace ?? "",
     profileImageUrl: user.profileImageUrl ?? null,
     profileImageFileId: user.profileImageFileId ?? null,
+    schoolId: user.schoolId ?? "",
+    branchId: user.branchId ?? "",
   };
 }
 
@@ -176,6 +183,24 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
     [roles.data],
   );
 
+  // Maktab / filial — ko'p-maktabli ajratish uchun foydalanuvchiga biriktiriladi.
+  const schools = useSchoolOptions();
+  const branches = useBranchOptions();
+  const schoolOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "Maktabni tanlang" },
+      ...(schools.data ?? []).map((s) => ({ value: s.id, label: s.label })),
+    ],
+    [schools.data],
+  );
+  const branchOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "Filialsiz (bosh ofis)" },
+      ...(branches.data ?? []).map((b) => ({ value: b.id, label: b.label })),
+    ],
+    [branches.data],
+  );
+
   // Default the role when creating: a caller-provided one (e.g. "parent") wins,
   // otherwise fall back to the first available role.
   useEffect(() => {
@@ -209,6 +234,8 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
       workplace: trimmed(form.workplace),
       profileImageUrl: form.profileImageUrl,
       profileImageFileId: form.profileImageFileId,
+      schoolId: form.schoolId || undefined,
+      branchId: form.branchId || undefined,
     };
   }
 
@@ -522,6 +549,29 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
                 onChange={(e) => set("workplace", e.target.value)}
                 placeholder={t("users.placeholder.workplace")}
                 maxLength={160}
+              />
+            </Field>
+          </div>
+        </section>
+
+        {/* Maktab & Filial (ko'p-maktabli ajratish) */}
+        <section className="space-y-4">
+          <h4 className="label">Maktab va filial</h4>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Maktab" htmlFor="u-school">
+              <Select
+                id="u-school"
+                value={form.schoolId}
+                onChange={(e) => set("schoolId", e.target.value)}
+                options={schoolOptions}
+              />
+            </Field>
+            <Field label="Filial" htmlFor="u-branch">
+              <Select
+                id="u-branch"
+                value={form.branchId}
+                onChange={(e) => set("branchId", e.target.value)}
+                options={branchOptions}
               />
             </Field>
           </div>

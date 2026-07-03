@@ -91,7 +91,7 @@ export default function DepartmentsPage() {
     <div className="stagger">
       <PageHeader
         title="Bo‘limlar"
-        subtitle="Tashkiliy bo‘limlar va ularning filiallari"
+        subtitle="Tavsif"
         action={
           <Button variant="accent" onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
@@ -119,7 +119,7 @@ export default function DepartmentsPage() {
               <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
                 <th className="px-4 py-3 font-medium">№</th>
                 <th className="px-4 py-3 font-medium">Nomi</th>
-                <th className="px-4 py-3 font-medium">Maktab / Filial</th>
+                <th className="px-4 py-3 font-medium">Filial</th>
                 <th className="px-4 py-3 font-medium">Status</th>
                 <th className="px-4 py-3 text-right font-medium">Amallar</th>
               </tr>

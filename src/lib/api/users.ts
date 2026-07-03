@@ -51,6 +51,8 @@ export interface User {
   workplace?: string | null;
   profileImageUrl?: string | null;
   profileImageFileId?: string | null;
+  schoolId?: string | null;
+  branchId?: string | null;
   role?: string | null;
   roles: UserRoleRef[];
   status: UserStatus;
@@ -96,6 +98,8 @@ export interface UserInput {
   email?: string;
   profileImageUrl?: string | null;
   profileImageFileId?: string | null;
+  schoolId?: string | null;
+  branchId?: string | null;
   firstName: string;
   firstNameCyrillic: string;
   lastName: string;

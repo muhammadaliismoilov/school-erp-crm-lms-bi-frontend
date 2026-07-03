@@ -16,11 +16,12 @@ describe("hr-teachers constants", () => {
     expect(WORK_TYPE_LABELS.hourly).toBe("Soatbay");
   });
 
-  it("category labels match the screenshot wording", () => {
-    expect(CATEGORY_LABELS.oliy).toBe("Oliy toifali");
-    expect(CATEGORY_LABELS.first).toBe("1-toifa");
-    expect(CATEGORY_LABELS.second).toBe("2-toifa");
-    expect(CATEGORY_LABELS.special).toBe("Maxsus");
+  it("category labels reuse the unified qualification scheme", () => {
+    // Malaka toifasi xodim (StaffMember) enum'i bilan birlashtirildi.
+    expect(CATEGORY_LABELS.mutaxassis).toBe("Mutaxassis (toifasiz)");
+    expect(CATEGORY_LABELS.ikkinchi).toBe("Ikkinchi toifa");
+    expect(CATEGORY_LABELS.birinchi).toBe("Birinchi toifa");
+    expect(CATEGORY_LABELS.oliy).toBe("Oliy toifa");
   });
 
   it("status labels and tones cover every status", () => {
@@ -57,6 +58,7 @@ describe("hr-teachers types", () => {
       pinfl: null,
       phone: null,
       email: null,
+      photoUrl: null,
       workType: "full",
       degree: "bachelor",
       employmentType: "primary",
