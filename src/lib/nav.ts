@@ -4,6 +4,7 @@ import {
   Users,
   Router,
   SlidersHorizontal,
+  BellRing,
   CalendarCheck,
   Wallet,
   Banknote,
@@ -206,6 +207,7 @@ export const NAV_ITEMS: NavEntry[] = [
       },
     ],
   },
+  { href: "/profile/notifications", labelKey: "nav.notifChannels", icon: BellRing },
   FINANCE_GROUP,
   HR_GROUP,
   {
