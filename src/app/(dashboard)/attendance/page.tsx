@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { CalendarDays, DoorOpen, LogOut, School, Search, Users } from "lucide-react";
 import { STATUS_LABEL, STATUS_TONE } from "@/components/attendance/status-picker";
 import { Badge, Spinner } from "@/components/ui/card";
@@ -136,7 +137,12 @@ function DailyRow({ row, index }: { row: DailyBoardRow; index: number }) {
     <tr className="hover:bg-parchment/60">
       <td className="px-4 py-2.5 text-right text-xs tabular-nums text-ink-muted">{index}</td>
       <td className="px-4 py-2.5">
-        <div className="font-medium text-ink">{row.studentName}</div>
+        <Link
+          href={`/attendance/history/${row.studentId}?name=${encodeURIComponent(row.studentName)}`}
+          className="font-medium text-ink hover:text-accent hover:underline"
+        >
+          {row.studentName}
+        </Link>
         <div className="font-mono text-[11px] text-ink-muted">{row.studentCode}</div>
       </td>
       <td className="px-4 py-2.5 text-ink-soft">{row.className ?? "—"}</td>
