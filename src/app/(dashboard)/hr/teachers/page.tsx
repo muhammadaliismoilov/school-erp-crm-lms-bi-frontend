@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Briefcase,
   ChevronLeft,
@@ -33,12 +34,14 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
 import { TeacherDrawer } from "@/components/hr/teacher-form-drawer";
+import { CredentialsModal, StaffFormModal } from "@/components/hr/staff-form-modal";
 
 // Malaka toifasi xodim (StaffMember) bilan yagona enum — rasmiy sxema (past→yuqori).
 const CATEGORY_OPTIONS: { value: QualificationCategory; label: string }[] =
   QUALIFICATION_CATEGORIES.map((value) => ({ value, label: QUALIFICATION_LABELS[value] }));
 
 export default function TeachersPage() {
+  const router = useRouter();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<QualificationCategory | "">("");
@@ -49,6 +52,8 @@ export default function TeachersPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<Teacher | null>(null);
   const [deleting, setDeleting] = useState<Teacher | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [credentials, setCredentials] = useState<{ username: string; password: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -87,9 +92,9 @@ export default function TeachersPage() {
     try {
       await deleteTeacher.mutateAsync(deleting.id);
       setDeleting(null);
-      setToast("O'qituvchi o'chirildi");
+      setToast("O'qituvchilik roli olib tashlandi");
     } catch {
-      setToast("O'chirishda xatolik");
+      setToast("Rolni olib tashlashda xatolik");
     }
   }
 
@@ -99,13 +104,7 @@ export default function TeachersPage() {
         title="O'qituvchilar ro'yxati"
         subtitle="Maktab o'qituvchilarini boshqarish"
         action={
-          <Button
-            variant="accent"
-            onClick={() => {
-              setEditing(null);
-              setDrawerOpen(true);
-            }}
-          >
+          <Button variant="accent" onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             O'qituvchi qo'shish
           </Button>
@@ -113,7 +112,7 @@ export default function TeachersPage() {
       />
 
       <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard icon={<Users className="h-5 w-5" />} label="O'qituvchilar ro'yxati" value={stats?.total ?? 0} tone="accent" />
+        <StatCard icon={<Users className="h-5 w-5" />} label="Jami o'qituvchilar" value={stats?.total ?? 0} tone="accent" />
         <StatCard icon={<Briefcase className="h-5 w-5" />} label="To'liq" value={stats?.fullTime ?? 0} tone="positive" />
         <StatCard icon={<Clock className="h-5 w-5" />} label="Soatbay" value={stats?.hourly ?? 0} tone="caution" />
         <StatCard icon={<GraduationCap className="h-5 w-5" />} label="Fan o'qituvchisi" value={stats?.subjectTeachers ?? 0} tone="accent" />
@@ -182,7 +181,16 @@ export default function TeachersPage() {
                 <StateRow colSpan={8}><span className="text-ink-muted">Ma'lumot yo'q</span></StateRow>
               ) : (
                 rows.map((t, i) => (
-                  <tr key={t.id} className="border-b border-line/60 last:border-0">
+                  <tr
+                    key={t.id}
+                    className={`border-b border-line/60 last:border-0 ${
+                      t.staffMemberId ? "cursor-pointer hover:bg-parchment/40" : ""
+                    }`}
+                    onClick={() => {
+                      // Yagona xodim profiliga — "O'qituvchilik" tabi ochiq holda.
+                      if (t.staffMemberId) router.push(`/hr/employees/${t.staffMemberId}?tab=teaching`);
+                    }}
+                  >
                     <td className="px-4 py-3 text-ink-muted">{(page - 1) * limit + i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 font-medium text-ink">
@@ -216,7 +224,7 @@ export default function TeachersPage() {
                     <td className="px-4 py-3">
                       <Badge tone="neutral">{WORK_TYPE_LABELS[t.workType]}</Badge>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
@@ -230,7 +238,7 @@ export default function TeachersPage() {
                         </button>
                         <button
                           className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          title="O'chirish"
+                          title="O'qituvchilik rolini olib tashlash"
                           onClick={() => setDeleting(t)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -281,6 +289,23 @@ export default function TeachersPage() {
         </div>
       </div>
 
+      {/* Yaratish — yagona xodim formasi orqali (o'qituvchilik bo'limi yoqiq). */}
+      <StaffFormModal
+        open={createOpen}
+        editing={null}
+        defaultTeacher
+        onClose={() => setCreateOpen(false)}
+        onCreated={(creds, warning) => {
+          setCreateOpen(false);
+          setToast(warning ?? "O'qituvchi yaratildi");
+          if (creds) setCredentials(creds);
+        }}
+        onUpdated={() => setCreateOpen(false)}
+      />
+
+      <CredentialsModal credentials={credentials} onClose={() => setCredentials(null)} />
+
+      {/* Tahrirlash — faqat pedagogik maydonlar (shaxsiy ma'lumot xodim formasida). */}
       <TeacherDrawer
         open={drawerOpen}
         editing={editing}
@@ -291,11 +316,17 @@ export default function TeachersPage() {
         }}
       />
 
-      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="O'qituvchini o'chirish">
-        <p className="text-sm text-ink-muted">{deleting?.fullName} o'chiriladi. Davom etilsinmi?</p>
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="O'qituvchilik rolini olib tashlash">
+        <p className="text-sm text-ink-muted">
+          {deleting?.fullName} dan o'qituvchilik roli olib tashlanadi — u ro'yxatdan chiqadi, lekin{" "}
+          <span className="font-medium text-ink">xodim sifatida ishlashda davom etadi</span> (shaxsiy ma'lumotlari
+          saqlanadi). Ishdan bo'shatish xodim profilidan bajariladi. Davom etilsinmi?
+        </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleting(null)}>Bekor qilish</Button>
-          <Button variant="danger" loading={deleteTeacher.isPending} onClick={confirmDelete}>O'chirish</Button>
+          <Button variant="danger" loading={deleteTeacher.isPending} onClick={confirmDelete}>
+            Rolni olib tashlash
+          </Button>
         </div>
       </Modal>
 

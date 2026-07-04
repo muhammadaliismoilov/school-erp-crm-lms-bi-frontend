@@ -1,55 +1,46 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Camera,
+  BadgeCheck,
   ChevronLeft,
+  GraduationCap,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Copy,
   Eye,
   History,
+  Palmtree,
   Pencil,
   Plus,
   Search,
   Trash2,
-  Wand2,
-  X,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   EMPLOYMENT_STATUS_LABELS,
   EMPLOYMENT_STATUS_TONE,
   PAGE_SIZES,
-  QUALIFICATION_CATEGORIES,
-  QUALIFICATION_LABELS,
-  QUALIFICATION_POSITION,
-  useCreateStaff,
   useDeleteStaff,
   useDepartments,
   usePositions,
   useSalaryHistory,
   useStaff,
-  useUpdateStaff,
   type EmploymentStatus,
-  type QualificationCategory,
-  type StaffInput,
   type StaffMember,
 } from "@/lib/api/hr";
-import { useRoles } from "@/lib/api/roles";
-import { latinToCyrillic } from "@/lib/transliterate";
+import { useHrStats } from "@/lib/api/hr-stats";
 import { formatDateDMY } from "@/lib/format";
 import { formatMoney } from "@/lib/utils";
-import { Badge, Spinner } from "@/components/ui/card";
+import { Badge, Card, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
-import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
-import { useUploadFile, ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_SIZE } from "@/lib/api/files";
+import { CredentialsModal, StaffFormModal } from "@/components/hr/staff-form-modal";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Barchasi" },
@@ -99,7 +90,14 @@ export default function EmployeesPage() {
   });
   const { data: departments } = useDepartments();
   const { data: positions } = usePositions();
+  const { data: stats } = useHrStats();
   const deleteStaff = useDeleteStaff();
+
+  /** Karta bosilganda jadval status filtriga o'tadi (qayta bosilsa bekor bo'ladi). */
+  function toggleStatusFilter(next: "" | EmploymentStatus) {
+    setStatus((cur) => (cur === next ? "" : next));
+    setPage(1);
+  }
 
   const rows = data?.items ?? [];
   const meta = data?.meta;
@@ -148,6 +146,40 @@ export default function EmployeesPage() {
           </Button>
         }
       />
+
+      {/* Yig'ma ko'rsatkichlar — karta bosilsa jadval o'sha status filtriga o'tadi */}
+      <div className="mb-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          icon={<Users className="h-5 w-5" />}
+          label="Jami xodimlar"
+          value={stats?.staff.total ?? 0}
+          tone="accent"
+          active={status === ""}
+          onClick={() => toggleStatusFilter("")}
+        />
+        <StatCard
+          icon={<BadgeCheck className="h-5 w-5" />}
+          label="Faol"
+          value={stats?.staff.active ?? 0}
+          tone="positive"
+          active={status === "active"}
+          onClick={() => toggleStatusFilter("active")}
+        />
+        <StatCard
+          icon={<Palmtree className="h-5 w-5" />}
+          label="Ta'tilda (bugun)"
+          value={stats?.staff.onLeaveToday ?? 0}
+          tone="caution"
+          active={status === "on_leave"}
+          onClick={() => toggleStatusFilter("on_leave")}
+        />
+        <StatCard
+          icon={<UserPlus className="h-5 w-5" />}
+          label="Yangi (shu oy)"
+          value={stats?.staff.newThisMonth ?? 0}
+          tone="accent"
+        />
+      </div>
 
       {/* Filtrlar */}
       <div className="mb-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
@@ -229,7 +261,14 @@ export default function EmployeesPage() {
                   >
                     <td className="px-4 py-3 text-ink-muted">{(page - 1) * limit + i + 1}</td>
                     <td className="px-4 py-3 font-medium text-ink">
-                      {`${s.lastName} ${s.firstName}${s.middleName ? " " + s.middleName : ""}`}
+                      <span className="inline-flex items-center gap-1.5">
+                        {`${s.lastName} ${s.firstName}${s.middleName ? " " + s.middleName : ""}`}
+                        {s.teacher && (
+                          <span title="O'qituvchi" className="text-amber">
+                            <GraduationCap className="h-4 w-4" />
+                          </span>
+                        )}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-ink-soft">{s.department?.name ?? "—"}</td>
                     <td className="px-4 py-3 text-ink-soft">{s.position?.title ?? "—"}</td>
@@ -321,14 +360,14 @@ export default function EmployeesPage() {
         open={formOpen}
         editing={editing}
         onClose={() => setFormOpen(false)}
-        onCreated={(creds) => {
+        onCreated={(creds, warning) => {
           setFormOpen(false);
-          setToast("Xodim muvaffaqiyatli yaratildi");
+          setToast(warning ?? "Xodim muvaffaqiyatli yaratildi");
           if (creds) setCredentials(creds);
         }}
-        onUpdated={() => {
+        onUpdated={(warning) => {
           setFormOpen(false);
-          setToast("Xodim ma‘lumotlari yangilandi");
+          setToast(warning ?? "Xodim ma‘lumotlari yangilandi");
         }}
       />
 
@@ -338,7 +377,8 @@ export default function EmployeesPage() {
 
       <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Xodimni o‘chirish">
         <p className="text-sm text-ink-muted">
-          {deleting && `${deleting.lastName} ${deleting.firstName}`} o‘chiriladi. Davom etilsinmi?
+          {deleting && `${deleting.lastName} ${deleting.firstName}`} ro‘yxatdan o‘chiriladi
+          {deleting?.teacher ? " (o‘qituvchilik yozuvi ham birga olib tashlanadi)" : ""}. Davom etilsinmi?
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleting(null)}>Bekor qilish</Button>
@@ -366,400 +406,46 @@ function StateRow({ colSpan, children }: { colSpan: number; children: React.Reac
   );
 }
 
-// ─── Xodim yaratish / yangilash modal ──────────────────────────────────────
-
-interface FormState {
-  firstName: string;
-  firstNameCyrillic: string;
-  lastName: string;
-  lastNameCyrillic: string;
-  middleName: string;
-  middleNameCyrillic: string;
-  email: string;
-  phone: string;
-  photoUrl: string;
-  gender: "" | "male" | "female";
-  birthDate: string;
-  hireDate: string;
-  passportSeries: string;
-  pinfl: string;
-  departmentId: string;
-  positionId: string;
-  roleName: string;
-  salary: number | null;
-  status: EmploymentStatus;
-  qualificationCategory: "" | QualificationCategory;
-  qualificationDate: string;
-  salaryChangeReason: string;
-}
-
-const EMPTY_FORM: FormState = {
-  firstName: "", firstNameCyrillic: "", lastName: "", lastNameCyrillic: "",
-  middleName: "", middleNameCyrillic: "", email: "", phone: "", photoUrl: "", gender: "",
-  birthDate: "", hireDate: "", passportSeries: "", pinfl: "", departmentId: "",
-  positionId: "", roleName: "", salary: null, status: "active",
-  qualificationCategory: "", qualificationDate: "", salaryChangeReason: "",
-};
-
-function StaffFormModal({
-  open,
-  editing,
-  onClose,
-  onCreated,
-  onUpdated,
+function StatCard({
+  icon,
+  label,
+  value,
+  tone,
+  active,
+  onClick,
 }: {
-  open: boolean;
-  editing: StaffMember | null;
-  onClose: () => void;
-  onCreated: (credentials: { username: string; password: string } | null) => void;
-  onUpdated: () => void;
-}) {
-  const createStaff = useCreateStaff();
-  const updateStaff = useUpdateStaff();
-  const uploadPhoto = useUploadFile();
-  const { data: departments } = useDepartments();
-  const { data: positions } = usePositions();
-  const { data: rolesData } = useRoles({ page: 1, limit: 100 });
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [error, setError] = useState<string | null>(null);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setPhotoError(null);
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setPhotoError("Faqat rasm fayli (PNG, JPEG, WEBP)");
-      return;
-    }
-    if (file.size > MAX_UPLOAD_SIZE) {
-      setPhotoError("Rasm hajmi 5 MB dan oshmasligi kerak");
-      return;
-    }
-    try {
-      const uploaded = await uploadPhoto.mutateAsync(file);
-      setForm((prev) => ({ ...prev, photoUrl: uploaded.url ?? prev.photoUrl }));
-    } catch {
-      setPhotoError("Rasm yuklashda xatolik");
-    }
-  }
-
-  useEffect(() => {
-    if (!open) return;
-    if (editing) {
-      setForm({
-        firstName: editing.firstName,
-        firstNameCyrillic: editing.firstNameCyrillic ?? "",
-        lastName: editing.lastName,
-        lastNameCyrillic: editing.lastNameCyrillic ?? "",
-        middleName: editing.middleName ?? "",
-        middleNameCyrillic: editing.middleNameCyrillic ?? "",
-        email: editing.email ?? "",
-        phone: editing.phone ?? "",
-        photoUrl: editing.photoUrl ?? "",
-        gender: editing.gender ?? "",
-        birthDate: editing.birthDate ?? "",
-        hireDate: editing.hireDate ?? "",
-        passportSeries: editing.passportSeries ?? "",
-        pinfl: editing.pinfl ?? "",
-        departmentId: editing.departmentId ?? "",
-        positionId: editing.positionId ?? "",
-        roleName: "",
-        salary: Number(editing.salary) || 0,
-        status: editing.status,
-        qualificationCategory: editing.qualificationCategory ?? "",
-        qualificationDate: editing.qualificationDate ?? "",
-        salaryChangeReason: "",
-      });
-    } else {
-      setForm(EMPTY_FORM);
-    }
-    setError(null);
-  }, [open, editing]);
-
-  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((f) => ({ ...f, [key]: value }));
-  }
-
-  const deptOptions = [{ value: "", label: "Bo‘limni tanlang" }, ...(departments ?? []).map((d) => ({ value: d.id, label: d.name }))];
-  const posOptions = [{ value: "", label: "Lavozimni tanlang" }, ...(positions ?? []).map((p) => ({ value: p.id, label: p.title }))];
-  const roleOptions = [{ value: "", label: "Rolsiz" }, ...(rolesData?.items ?? []).map((r) => ({ value: r.name, label: r.name }))];
-
-  async function submit() {
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      setError("Ism va familiyani kiriting");
-      return;
-    }
-    if (!form.email.trim()) {
-      setError("Email kiriting");
-      return;
-    }
-    if (!form.gender) {
-      setError("Jinsni tanlang");
-      return;
-    }
-    if (!form.hireDate) {
-      setError("Ishga qabul sanasini kiriting");
-      return;
-    }
-    if (!form.departmentId) {
-      setError("Bo‘limni tanlang");
-      return;
-    }
-    if (!form.positionId) {
-      setError("Lavozimni tanlang");
-      return;
-    }
-
-    const payload: StaffInput = {
-      firstName: form.firstName.trim(),
-      firstNameCyrillic: form.firstNameCyrillic.trim() || undefined,
-      lastName: form.lastName.trim(),
-      lastNameCyrillic: form.lastNameCyrillic.trim() || undefined,
-      middleName: form.middleName.trim() || undefined,
-      middleNameCyrillic: form.middleNameCyrillic.trim() || undefined,
-      email: form.email.trim() || undefined,
-      phone: form.phone.trim() || undefined,
-      photoUrl: form.photoUrl.trim() || undefined,
-      gender: form.gender || undefined,
-      birthDate: form.birthDate || undefined,
-      hireDate: form.hireDate,
-      passportSeries: form.passportSeries.trim() || undefined,
-      pinfl: form.pinfl.trim() || undefined,
-      departmentId: form.departmentId,
-      positionId: form.positionId,
-      roleName: form.roleName || undefined,
-      salary: form.salary ?? 0,
-      status: form.status,
-      qualificationCategory: form.qualificationCategory || undefined,
-      qualificationDate: form.qualificationDate || undefined,
-      salaryChangeReason: form.salaryChangeReason.trim() || undefined,
-    };
-
-    try {
-      if (editing) {
-        await updateStaff.mutateAsync({ id: editing.id, input: payload });
-        onUpdated();
-      } else {
-        const res = await createStaff.mutateAsync(payload);
-        onCreated(res.credentials);
-      }
-    } catch {
-      setError("Saqlashda xatolik yuz berdi");
-    }
-  }
-
-  const pending = createStaff.isPending || updateStaff.isPending;
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={editing ? "Xodimni yangilash" : "Xodim yaratish"}
-      footer={
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>Bekor qilish</Button>
-          <Button variant="accent" loading={pending} onClick={submit}>
-            {editing ? "Yangilash" : "Yaratish"}
-          </Button>
-        </div>
-      }
-    >
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex flex-col items-center gap-2 sm:col-span-2">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadPhoto.isPending}
-            className="group relative h-24 w-24 overflow-hidden rounded-full border border-line bg-surface transition-colors hover:border-amber focus-visible:focus-ring"
-            aria-label="Rasm yuklash"
-          >
-            {form.photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={form.photoUrl} alt="Xodim rasmi" className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-ink-muted">
-                <Camera className="h-7 w-7" />
-              </span>
-            )}
-            <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-              <Camera className="h-6 w-6 text-white" />
-            </span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED_IMAGE_TYPES.join(",")}
-            onChange={handlePhotoChange}
-            className="hidden"
-          />
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-ink-muted">
-              {uploadPhoto.isPending ? "Yuklanmoqda..." : "Rasm (FaceID davomati uchun)"}
-            </span>
-            {form.photoUrl && !uploadPhoto.isPending && (
-              <button
-                type="button"
-                onClick={() => set("photoUrl", "")}
-                className="inline-flex items-center gap-0.5 text-xs text-negative hover:underline"
-              >
-                <X className="h-3 w-3" /> O'chirish
-              </button>
-            )}
-          </div>
-          {photoError && <span className="text-xs text-negative">{photoError}</span>}
-        </div>
-
-        <TranslitPair
-          label="Ism (lotin)" required latinValue={form.firstName}
-          cyrLabel="Ism (kirill)" cyrValue={form.firstNameCyrillic}
-          onLatin={(v) => set("firstName", v)} onCyr={(v) => set("firstNameCyrillic", v)}
-        />
-        <TranslitPair
-          label="Familiya (lotin)" required latinValue={form.lastName}
-          cyrLabel="Familiya (kirill)" cyrValue={form.lastNameCyrillic}
-          onLatin={(v) => set("lastName", v)} onCyr={(v) => set("lastNameCyrillic", v)}
-        />
-        <TranslitPair
-          label="Otasining ismi (lotin)" latinValue={form.middleName}
-          cyrLabel="Otasining ismi (kirill)" cyrValue={form.middleNameCyrillic}
-          onLatin={(v) => set("middleName", v)} onCyr={(v) => set("middleNameCyrillic", v)}
-        />
-
-        <Field label="Email" required>
-          <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="email@example.com" />
-        </Field>
-        <Field label="Telefon">
-          <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+998..." />
-        </Field>
-
-        <Field label="Jins" required>
-          <Select
-            value={form.gender}
-            onChange={(e) => set("gender", e.target.value as FormState["gender"])}
-            options={[{ value: "", label: "Jinsni tanlang" }, { value: "male", label: "Erkak" }, { value: "female", label: "Ayol" }]}
-          />
-        </Field>
-        <Field label="Tug‘ilgan sana">
-          <DatePicker value={form.birthDate} onChange={(iso) => set("birthDate", iso)} />
-        </Field>
-
-        <Field label="Ishga qabul sanasi" required>
-          <DatePicker value={form.hireDate} onChange={(iso) => set("hireDate", iso)} />
-        </Field>
-        <Field label="Pasport seriyasi">
-          <Input value={form.passportSeries} onChange={(e) => set("passportSeries", e.target.value)} placeholder="AB1234567" />
-        </Field>
-
-        <Field label="PINFL">
-          <Input value={form.pinfl} onChange={(e) => set("pinfl", e.target.value)} placeholder="14 raqam" />
-        </Field>
-        <Field label="Bo‘lim" required>
-          <Select value={form.departmentId} onChange={(e) => set("departmentId", e.target.value)} options={deptOptions} />
-        </Field>
-
-        <Field label="Lavozim" required>
-          <Select value={form.positionId} onChange={(e) => set("positionId", e.target.value)} options={posOptions} />
-        </Field>
-        <Field label="Maosh">
-          <NumberInput value={form.salary} onChange={(v) => set("salary", v)} placeholder="0" />
-        </Field>
-
-        <Field label="Rol (login uchun)">
-          <Select value={form.roleName} onChange={(e) => set("roleName", e.target.value)} options={roleOptions} />
-        </Field>
-        <Field label="Status">
-          <Select
-            value={form.status}
-            onChange={(e) => set("status", e.target.value as EmploymentStatus)}
-            options={[{ value: "active", label: "Faol" }, { value: "dismissed", label: "Faol emas" }, { value: "on_leave", label: "Ta'tilda" }]}
-          />
-        </Field>
-
-        <Field label="Malaka toifasi (o‘qituvchi uchun)">
-          <Select
-            value={form.qualificationCategory}
-            onChange={(e) => {
-              const value = e.target.value as "" | QualificationCategory;
-              set("qualificationCategory", value);
-              // Toifaga mos lavozimni avtomatik taklif qilamiz (agar topilsa).
-              if (value) {
-                const match = (positions ?? []).find((p) => p.title === QUALIFICATION_POSITION[value]);
-                if (match) set("positionId", match.id);
-              }
-            }}
-            options={[
-              { value: "", label: "Toifasiz" },
-              ...QUALIFICATION_CATEGORIES.map((c) => ({ value: c, label: QUALIFICATION_LABELS[c] })),
-            ]}
-          />
-        </Field>
-        <Field label="Toifa berilgan sana">
-          <DatePicker value={form.qualificationDate} onChange={(iso) => set("qualificationDate", iso)} />
-        </Field>
-
-        {editing && (
-          <div className="sm:col-span-2">
-            <Field label="Maosh o‘zgarishi sababi (ixtiyoriy)">
-              <Input
-                value={form.salaryChangeReason}
-                onChange={(e) => set("salaryChangeReason", e.target.value)}
-                placeholder="Maosh o‘zgartirilsa, sababini yozing"
-              />
-            </Field>
-          </div>
-        )}
-      </div>
-
-      {error && <div className="mt-3 text-sm text-negative">{error}</div>}
-    </Modal>
-  );
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-sm font-medium text-ink">
-        {label} {required && <span className="text-negative">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}
-
-/** Lotin + kirill juftligi; kirill yonida transliteratsiya tugmasi. */
-function TranslitPair({
-  label, cyrLabel, required, latinValue, cyrValue, onLatin, onCyr,
-}: {
+  icon: React.ReactNode;
   label: string;
-  cyrLabel: string;
-  required?: boolean;
-  latinValue: string;
-  cyrValue: string;
-  onLatin: (v: string) => void;
-  onCyr: (v: string) => void;
+  value: number;
+  tone: "accent" | "positive" | "caution";
+  active?: boolean;
+  onClick?: () => void;
 }) {
-  return (
+  const tones: Record<string, string> = {
+    accent: "bg-amber/15 text-amber",
+    positive: "bg-emerald-500/15 text-emerald-600",
+    caution: "bg-orange-500/15 text-orange-600",
+  };
+  const body = (
     <>
-      <Field label={label} required={required}>
-        <Input value={latinValue} onChange={(e) => onLatin(e.target.value)} />
-      </Field>
-      <Field label={cyrLabel}>
-        <div className="flex gap-1.5">
-          <Input value={cyrValue} onChange={(e) => onCyr(e.target.value)} />
-          <button
-            type="button"
-            title="Lotindan kirillga o‘girish"
-            onClick={() => onCyr(latinToCyrillic(latinValue))}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-line text-ink-soft hover:border-amber hover:text-amber"
-          >
-            <Wand2 className="h-4 w-4" />
-          </button>
-        </div>
-      </Field>
+      <span className={`grid h-11 w-11 place-items-center rounded-xl ${tones[tone]}`}>{icon}</span>
+      <div className="text-left">
+        <div className="text-xs text-ink-muted">{label}</div>
+        <div className="tnum text-2xl font-semibold text-ink">{value}</div>
+      </div>
     </>
+  );
+  if (!onClick) return <Card className="flex items-center gap-3 p-4">{body}</Card>;
+  return (
+    <button type="button" onClick={onClick} className="text-left focus-visible:focus-ring rounded-xl">
+      <Card
+        className={`flex h-full items-center gap-3 p-4 transition-colors hover:border-amber ${
+          active ? "border-amber" : ""
+        }`}
+      >
+        {body}
+      </Card>
+    </button>
   );
 }
 
@@ -815,59 +501,3 @@ function SalaryHistoryModal({ staff, onClose }: { staff: StaffMember | null; onC
   );
 }
 
-// ─── Login ma'lumotlari modal (yaratishdan keyin bir marta) ────────────────
-
-function CredentialsModal({
-  credentials,
-  onClose,
-}: {
-  credentials: { username: string; password: string } | null;
-  onClose: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  function copy() {
-    if (!credentials) return;
-    navigator.clipboard
-      ?.writeText(`Login: ${credentials.username}\nParol: ${credentials.password}`)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      })
-      .catch(() => undefined);
-  }
-
-  return (
-    <Modal
-      open={!!credentials}
-      onClose={onClose}
-      title="Login ma‘lumotlari"
-      subtitle="Bu parol faqat hozir ko‘rsatiladi — saqlab oling"
-      footer={
-        <div className="flex justify-end">
-          <Button variant="accent" onClick={onClose}>Tushunarli</Button>
-        </div>
-      }
-    >
-      {credentials && (
-        <div className="space-y-3">
-          <CredRow label="Login" value={credentials.username} />
-          <CredRow label="Parol" value={credentials.password} />
-          <Button variant="secondary" size="sm" onClick={copy}>
-            <Copy className="mr-1.5 h-3.5 w-3.5" />
-            {copied ? "Nusxalandi" : "Nusxalash"}
-          </Button>
-        </div>
-      )}
-    </Modal>
-  );
-}
-
-function CredRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg border border-line bg-parchment/40 px-3 py-2">
-      <span className="text-sm text-ink-muted">{label}</span>
-      <span className="font-mono text-sm text-ink">{value}</span>
-    </div>
-  );
-}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Award,
@@ -15,15 +15,24 @@ import {
   Star,
   Trash2,
   Trophy,
+  UserX,
 } from "lucide-react";
 import {
   EMPLOYMENT_STATUS_LABELS,
   EMPLOYMENT_STATUS_TONE,
   GENDER_LABELS,
   QUALIFICATION_LABELS,
+  useSalaryHistory,
   useStaffMember,
+  useUpdateStaff,
   type StaffMember,
 } from "@/lib/api/hr";
+import {
+  ATTENDANCE_ACTION_LABELS,
+  ATTENDANCE_STATUS_LABELS,
+  ATTENDANCE_STATUS_TONE,
+  useAttendance,
+} from "@/lib/api/hr-attendance";
 import {
   STAFF_ACHIEVEMENT_CATEGORY_LABELS,
   STAFF_ACHIEVEMENT_RANK_LABELS,
@@ -49,6 +58,7 @@ import {
   TEACHER_STATUS_LABELS,
   TEACHER_STATUS_TONE,
   WORK_TYPE_LABELS,
+  useDeleteTeacher,
   useTeacherByStaff,
   type Teacher,
 } from "@/lib/api/hr-teachers";
@@ -59,24 +69,69 @@ import { Field, Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { formatDateDMY } from "@/lib/format";
+import { formatDateDMY, formatDateTimeDMY } from "@/lib/format";
 import { formatMoney } from "@/lib/utils";
 
-const TABS = [
+// Yagona xodim profili: "O'qituvchilik" tabi faqat bog'langan Teacher yozuvi
+// bo'lsa ko'rinadi (?tab=teaching bilan chuqur havola qilinadi).
+const BASE_TABS = [
   { key: "overview", label: "Ma'lumotlar" },
+  { key: "teaching", label: "O'qituvchilik" },
+  { key: "salary", label: "Maosh tarixi" },
+  { key: "attendance", label: "Davomat" },
   { key: "certificates", label: "Sertifikatlar" },
   { key: "achievements", label: "Yutuqlar" },
 ] as const;
 
-type TabKey = (typeof TABS)[number]["key"];
+type TabKey = (typeof BASE_TABS)[number]["key"];
 
+function isTabKey(v: string | null): v is TabKey {
+  return !!v && BASE_TABS.some((t) => t.key === v);
+}
+
+// useSearchParams (?tab=) Suspense chegarasini talab qiladi.
 export default function EmployeeDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="grid place-items-center py-24">
+          <Spinner className="h-7 w-7" />
+        </div>
+      }
+    >
+      <EmployeeDetail />
+    </Suspense>
+  );
+}
+
+function EmployeeDetail() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id as string;
-  const [tab, setTab] = useState<TabKey>("overview");
+  const requested = searchParams.get("tab");
+  const [tab, setTab] = useState<TabKey>(isTabKey(requested) ? requested : "overview");
+  const [dismissOpen, setDismissOpen] = useState(false);
 
   const { data: staff, isLoading } = useStaffMember(id);
+  const { data: teacher } = useTeacherByStaff(id);
+  const updateStaff = useUpdateStaff();
+
+  async function confirmDismiss() {
+    // Ishdan bo'shatish = status o'zgarishi (yozuv o'chirilmaydi — tarix saqlanadi).
+    await updateStaff.mutateAsync({ id, input: { status: "dismissed" } });
+    setDismissOpen(false);
+  }
+
+  // O'qituvchi bo'lmagan xodimda "O'qituvchilik" tabi ko'rsatilmaydi; teacher
+  // hali yuklanmagan bo'lsa ham tab ro'yxatda turmaydi, yuklangach paydo bo'ladi.
+  const tabs = BASE_TABS.filter((t) => t.key !== "teaching" || !!teacher);
+  const activeTab: TabKey = tab === "teaching" && !teacher ? "overview" : tab;
+
+  function selectTab(key: TabKey) {
+    setTab(key);
+    router.replace(`/hr/employees/${id}?tab=${key}`, { scroll: false });
+  }
 
   if (isLoading || !staff) {
     return (
@@ -117,16 +172,34 @@ export default function EmployeeDetailPage() {
           <p>{staff.position?.title ?? "—"}</p>
           <p>{staff.department?.name ?? "—"}</p>
         </div>
+        {staff.status !== "dismissed" && (
+          <Button variant="secondary" size="sm" onClick={() => setDismissOpen(true)}>
+            <UserX className="h-4 w-4 text-negative" /> Ishdan bo‘shatish
+          </Button>
+        )}
       </div>
+
+      <Modal open={dismissOpen} onClose={() => setDismissOpen(false)} title="Ishdan bo‘shatish">
+        <p className="text-sm text-ink-muted">
+          {fullName} <span className="font-medium text-ink">“Faol emas”</span> holatiga o‘tkaziladi — barcha
+          yozuvlari (maosh tarixi, davomat, hujjatlar) saqlanib qoladi. Davom etilsinmi?
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setDismissOpen(false)}>Bekor qilish</Button>
+          <Button variant="danger" loading={updateStaff.isPending} onClick={confirmDismiss}>
+            Ishdan bo‘shatish
+          </Button>
+        </div>
+      </Modal>
 
       {/* Tab nav */}
       <div className="mb-5 flex gap-1 overflow-x-auto border-b border-line">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => selectTab(t.key)}
             className={`whitespace-nowrap border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors ${
-              tab === t.key
+              activeTab === t.key
                 ? "border-accent text-accent"
                 : "border-transparent text-ink-muted hover:text-ink"
             }`}
@@ -136,9 +209,12 @@ export default function EmployeeDetailPage() {
         ))}
       </div>
 
-      {tab === "overview" && <OverviewTab staff={staff} />}
-      {tab === "certificates" && <CertificatesTab staffId={id} />}
-      {tab === "achievements" && <AchievementsTab staffId={id} />}
+      {activeTab === "overview" && <OverviewTab staff={staff} />}
+      {activeTab === "teaching" && teacher && <TeacherInfoCard teacher={teacher} />}
+      {activeTab === "salary" && <SalaryTab staffId={id} />}
+      {activeTab === "attendance" && <AttendanceTab staffId={id} />}
+      {activeTab === "certificates" && <CertificatesTab staffId={id} />}
+      {activeTab === "achievements" && <AchievementsTab staffId={id} />}
     </div>
   );
 }
@@ -146,7 +222,6 @@ export default function EmployeeDetailPage() {
 // ─── Ma'lumotlar tab ──────────────────────────────────────────────────────────
 
 function OverviewTab({ staff }: { staff: StaffMember }) {
-  const { data: teacher } = useTeacherByStaff(staff.id);
   const rows: { label: string; value: string }[] = [
     { label: "Bo‘lim", value: staff.department?.name ?? "—" },
     { label: "Lavozim", value: staff.position?.title ?? "—" },
@@ -163,20 +238,16 @@ function OverviewTab({ staff }: { staff: StaffMember }) {
   ];
 
   return (
-    <div className="space-y-5">
-      <Card className="p-5">
-        <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.map((r) => (
-            <div key={r.label}>
-              <dt className="text-xs uppercase tracking-wide text-ink-muted">{r.label}</dt>
-              <dd className="mt-0.5 text-sm font-medium text-ink">{r.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
-
-      {teacher && <TeacherInfoCard teacher={teacher} />}
-    </div>
+    <Card className="p-5">
+      <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+        {rows.map((r) => (
+          <div key={r.label}>
+            <dt className="text-xs uppercase tracking-wide text-ink-muted">{r.label}</dt>
+            <dd className="mt-0.5 text-sm font-medium text-ink">{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </Card>
   );
 }
 
@@ -185,6 +256,14 @@ function OverviewTab({ staff }: { staff: StaffMember }) {
 function TeacherInfoCard({ teacher }: { teacher: Teacher }) {
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const deleteTeacher = useDeleteTeacher();
+
+  async function confirmRemoveRole() {
+    // Faqat o'qituvchilik yozuvi o'chadi — xodim saqlanadi (tab o'zi yo'qoladi).
+    await deleteTeacher.mutateAsync(teacher.id);
+    setRemoveOpen(false);
+  }
   const rows: { label: string; value: string }[] = [
     { label: "Ish turi", value: WORK_TYPE_LABELS[teacher.workType] },
     { label: "Daraja", value: teacher.degree ? DEGREE_LABELS[teacher.degree] : "—" },
@@ -210,9 +289,14 @@ function TeacherInfoCard({ teacher }: { teacher: Teacher }) {
       <div className="mb-4 flex items-center gap-2">
         <h2 className="font-display text-base font-semibold text-ink">O'qituvchi ma'lumotlari</h2>
         <Badge tone={TEACHER_STATUS_TONE[teacher.status]}>{TEACHER_STATUS_LABELS[teacher.status]}</Badge>
-        <Button variant="secondary" size="sm" className="ml-auto" onClick={() => setEditOpen(true)}>
-          <Pencil className="h-4 w-4" /> Tahrirlash
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
+            <Pencil className="h-4 w-4" /> Tahrirlash
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => setRemoveOpen(true)}>
+            <Trash2 className="h-4 w-4 text-negative" /> Rolni olib tashlash
+          </Button>
+        </div>
       </div>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((r) => (
@@ -253,7 +337,119 @@ function TeacherInfoCard({ teacher }: { teacher: Teacher }) {
         qc.invalidateQueries({ queryKey: ["hr", "staff"] });
       }}
     />
+
+    <Modal open={removeOpen} onClose={() => setRemoveOpen(false)} title="O'qituvchilik rolini olib tashlash">
+      <p className="text-sm text-ink-muted">
+        {teacher.fullName} dan o'qituvchilik roli olib tashlanadi — u{" "}
+        <span className="font-medium text-ink">xodim sifatida ishlashda davom etadi</span>. Ishdan bo'shatish
+        yuqoridagi alohida amal orqali bajariladi. Davom etilsinmi?
+      </p>
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="secondary" onClick={() => setRemoveOpen(false)}>Bekor qilish</Button>
+        <Button variant="danger" loading={deleteTeacher.isPending} onClick={confirmRemoveRole}>
+          Rolni olib tashlash
+        </Button>
+      </div>
+    </Modal>
     </>
+  );
+}
+
+// ─── Maosh tarixi tab ─────────────────────────────────────────────────────────
+
+function SalaryTab({ staffId }: { staffId: string }) {
+  const { data, isLoading } = useSalaryHistory(staffId);
+  const rows = data ?? [];
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
+            <th className="px-4 py-3 font-medium">№</th>
+            <th className="px-4 py-3 font-medium">O‘zgartirilgan sana</th>
+            <th className="px-4 py-3 text-right font-medium">Eski maosh</th>
+            <th className="px-4 py-3 text-right font-medium">Yangi maosh</th>
+            <th className="px-4 py-3 font-medium">Sabab</th>
+            <th className="px-4 py-3 font-medium">Kim o‘zgartirgan</th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <tr><td colSpan={6} className="px-4 py-12 text-center"><Spinner className="mx-auto h-5 w-5" /></td></tr>
+          ) : rows.length === 0 ? (
+            <tr><td colSpan={6} className="px-4 py-12 text-center text-ink-muted">Maosh tarixi bo‘sh</td></tr>
+          ) : (
+            rows.map((h, i) => (
+              <tr key={h.id} className="border-b border-line/60 last:border-0">
+                <td className="px-4 py-3 text-ink-muted">{i + 1}</td>
+                <td className="px-4 py-3 text-ink-soft">{formatDateDMY(h.createdAt)}</td>
+                <td className="tnum px-4 py-3 text-right text-ink-soft">{h.oldSalary != null ? formatMoney(h.oldSalary) : "—"}</td>
+                <td className="tnum px-4 py-3 text-right font-medium text-ink">{formatMoney(h.newSalary)}</td>
+                <td className="px-4 py-3 text-ink-soft">{h.reason ?? "—"}</td>
+                <td className="px-4 py-3 text-ink-soft">{h.changedByName ?? "—"}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ─── Davomat tab ──────────────────────────────────────────────────────────────
+
+function AttendanceTab({ staffId }: { staffId: string }) {
+  const [page, setPage] = useState(1);
+  const limit = 20;
+  const { data, isLoading } = useAttendance({ staffMemberId: staffId, page, limit });
+  const rows = data?.items ?? [];
+  const pageCount = data?.meta?.pageCount ?? 1;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-muted">
+            <th className="px-4 py-3 font-medium">№</th>
+            <th className="px-4 py-3 font-medium">Vaqt</th>
+            <th className="px-4 py-3 font-medium">Amal</th>
+            <th className="px-4 py-3 font-medium">Hudud</th>
+            <th className="px-4 py-3 font-medium">Holat</th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <tr><td colSpan={5} className="px-4 py-12 text-center"><Spinner className="mx-auto h-5 w-5" /></td></tr>
+          ) : rows.length === 0 ? (
+            <tr><td colSpan={5} className="px-4 py-12 text-center text-ink-muted">Davomat yozuvlari yo‘q</td></tr>
+          ) : (
+            rows.map((r, i) => (
+              <tr key={r.id} className="border-b border-line/60 last:border-0">
+                <td className="px-4 py-3 text-ink-muted">{(page - 1) * limit + i + 1}</td>
+                <td className="tnum px-4 py-3 text-ink">{formatDateTimeDMY(r.recordedAt)}</td>
+                <td className="px-4 py-3 text-ink-soft">{ATTENDANCE_ACTION_LABELS[r.action]}</td>
+                <td className="px-4 py-3 text-ink-soft">{r.geofenceName ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <Badge tone={ATTENDANCE_STATUS_TONE[r.status]}>{ATTENDANCE_STATUS_LABELS[r.status]}</Badge>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      {pageCount > 1 && (
+        <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-3 text-sm">
+          <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            Oldingi
+          </Button>
+          <span className="tnum px-1 text-ink-muted">{page} / {pageCount}</span>
+          <Button variant="secondary" size="sm" disabled={page >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>
+            Keyingi
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
 

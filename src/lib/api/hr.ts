@@ -70,6 +70,8 @@ export interface StaffMember {
   qualificationCategory: QualificationCategory | null;
   qualificationDate: string | null;
   createdAt: string;
+  /** Bog'langan o'qituvchilik yozuvi (faqat ro'yxat so'rovida to'ldiriladi) — 🎓 belgisi uchun. */
+  teacher?: { id: string } | null;
 }
 
 export interface PageMeta {

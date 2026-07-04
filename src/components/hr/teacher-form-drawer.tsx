@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Camera, GraduationCap, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { GraduationCap } from "lucide-react";
 import {
   DEGREE_LABELS,
   EMPLOYMENT_TYPE_LABELS,
   TEACHER_STATUS_LABELS,
-  useCreateTeacher,
   useUpdateTeacher,
   type Teacher,
   type TeacherInput,
@@ -14,13 +13,11 @@ import {
 } from "@/lib/api/hr-teachers";
 import { QUALIFICATION_CATEGORIES, QUALIFICATION_LABELS, type QualificationCategory } from "@/lib/api/hr";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DateInput } from "@/components/ui/date-input";
 import { Drawer } from "@/components/ui/drawer";
-import { useUploadFile, ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_SIZE } from "@/lib/api/files";
 
 // Malaka toifasi xodim (StaffMember) bilan yagona enum — rasmiy sxema (past→yuqori).
 const CATEGORY_OPTIONS: { value: QualificationCategory; label: string }[] =
@@ -35,15 +32,6 @@ const ROLE_FIELDS = [
 ] as const;
 
 type FormState = {
-  firstName: string;
-  lastName: string;
-  middleName: string;
-  gender: "" | "male" | "female";
-  birthDate: string;
-  documentNumber: string;
-  pinfl: string;
-  phone: string;
-  photoUrl: string;
   workType: TeacherWorkType;
   degree: TeacherInput["degree"] | "";
   employmentType: TeacherInput["employmentType"];
@@ -62,15 +50,6 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
-  firstName: "",
-  lastName: "",
-  middleName: "",
-  gender: "",
-  birthDate: "",
-  documentNumber: "",
-  pinfl: "",
-  phone: "",
-  photoUrl: "",
   workType: "full",
   degree: "",
   employmentType: "primary",
@@ -89,8 +68,9 @@ const EMPTY_FORM: FormState = {
 };
 
 /**
- * O'qituvchi yaratish/tahrirlash formasi (Drawer). O'qituvchilar ro'yxatidan ham,
- * xodim kartochkasidan ham ochiladi — shu sababli mustaqil komponent.
+ * O'qituvchining pedagogik maydonlarini tahrirlash (Drawer). Shaxsiy ma'lumot
+ * (ism, telefon, rasm...) yagona manba — xodim formasida tahrirlanadi; yangi
+ * o'qituvchi ham xodim formasi ("O'qituvchilik" bo'limi) orqali yaratiladi.
  */
 export function TeacherDrawer({
   open,
@@ -103,67 +83,29 @@ export function TeacherDrawer({
   onClose: () => void;
   onSaved: (msg: string) => void;
 }) {
-  const createTeacher = useCreateTeacher();
   const updateTeacher = useUpdateTeacher();
-  const uploadPhoto = useUploadFile();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
-  const [photoError, setPhotoError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // bir xil faylni qayta tanlash imkoni uchun
-    if (!file) return;
-    setPhotoError(null);
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      setPhotoError("Faqat rasm fayli (PNG, JPEG, WEBP)");
-      return;
-    }
-    if (file.size > MAX_UPLOAD_SIZE) {
-      setPhotoError("Rasm hajmi 5 MB dan oshmasligi kerak");
-      return;
-    }
-    try {
-      const uploaded = await uploadPhoto.mutateAsync(file);
-      setForm((prev) => ({ ...prev, photoUrl: uploaded.url ?? prev.photoUrl }));
-    } catch {
-      setPhotoError("Rasm yuklashda xatolik");
-    }
-  }
 
   useEffect(() => {
-    if (!open) return;
-    if (editing) {
-      setForm({
-        firstName: editing.firstName,
-        lastName: editing.lastName,
-        middleName: editing.middleName ?? "",
-        gender: editing.gender ?? "",
-        birthDate: editing.birthDate ?? "",
-        documentNumber: editing.documentNumber ?? "",
-        pinfl: editing.pinfl ?? "",
-        phone: editing.phone ?? "",
-        photoUrl: editing.photoUrl ?? "",
-        workType: editing.workType,
-        degree: editing.degree ?? "",
-        employmentType: editing.employmentType,
-        status: editing.status,
-        category: editing.category ?? "",
-        experienceYears: editing.experienceYears,
-        ratePerLesson: Number(editing.ratePerLesson) || 0,
-        startDate: editing.startDate ?? "",
-        endDate: editing.endDate ?? "",
-        isSubjectTeacher: editing.isSubjectTeacher,
-        isAssistantTeacher: editing.isAssistantTeacher,
-        isMbr: editing.isMbr,
-        isExtraLesson: editing.isExtraLesson,
-        isClassLeader: editing.isClassLeader,
-        note: editing.note ?? "",
-      });
-    } else {
-      setForm(EMPTY_FORM);
-    }
+    if (!open || !editing) return;
+    setForm({
+      workType: editing.workType,
+      degree: editing.degree ?? "",
+      employmentType: editing.employmentType,
+      status: editing.status,
+      category: editing.category ?? "",
+      experienceYears: editing.experienceYears,
+      ratePerLesson: Number(editing.ratePerLesson) || 0,
+      startDate: editing.startDate ?? "",
+      endDate: editing.endDate ?? "",
+      isSubjectTeacher: editing.isSubjectTeacher,
+      isAssistantTeacher: editing.isAssistantTeacher,
+      isMbr: editing.isMbr,
+      isExtraLesson: editing.isExtraLesson,
+      isClassLeader: editing.isClassLeader,
+      note: editing.note ?? "",
+    });
     setError(null);
   }, [open, editing]);
 
@@ -172,24 +114,8 @@ export function TeacherDrawer({
   }
 
   async function submit() {
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      setError("Ism va familiyani kiriting");
-      return;
-    }
-    if (form.pinfl && !/^\d{14}$/.test(form.pinfl)) {
-      setError("JSHSHIR 14 ta raqamdan iborat bo'lishi kerak");
-      return;
-    }
-    const payload: TeacherInput = {
-      firstName: form.firstName.trim(),
-      lastName: form.lastName.trim(),
-      middleName: form.middleName.trim() || undefined,
-      gender: form.gender || undefined,
-      birthDate: form.birthDate || undefined,
-      documentNumber: form.documentNumber.trim() || undefined,
-      pinfl: form.pinfl.trim() || undefined,
-      phone: form.phone.trim() || undefined,
-      photoUrl: form.photoUrl.trim() || undefined,
+    if (!editing) return;
+    const payload: Partial<TeacherInput> = {
       workType: form.workType,
       degree: form.degree || undefined,
       employmentType: form.employmentType,
@@ -207,119 +133,33 @@ export function TeacherDrawer({
       note: form.note.trim() || undefined,
     };
     try {
-      if (editing) {
-        await updateTeacher.mutateAsync({ id: editing.id, input: payload });
-        onSaved("O'qituvchi yangilandi");
-      } else {
-        await createTeacher.mutateAsync(payload);
-        onSaved("O'qituvchi yaratildi");
-      }
+      await updateTeacher.mutateAsync({ id: editing.id, input: payload });
+      onSaved("O'qituvchi yangilandi");
     } catch {
       setError("Saqlashda xatolik yuz berdi");
     }
   }
 
-  const pending = createTeacher.isPending || updateTeacher.isPending;
-
   return (
     <Drawer
       open={open}
       onClose={onClose}
-      title={editing ? "O'qituvchini yangilash" : "O'qituvchi yaratish"}
-      subtitle="Shaxsiy ma'lumotlar"
+      title="O'qituvchini tahrirlash"
+      subtitle={editing?.fullName ?? ""}
       icon={<GraduationCap className="h-5 w-5" />}
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>Bekor qilish</Button>
-          <Button variant="accent" loading={pending} onClick={submit}>
-            {editing ? "Yangilash" : "Yaratish"}
+          <Button variant="accent" loading={updateTeacher.isPending} onClick={submit}>
+            Yangilash
           </Button>
         </div>
       }
     >
       <div className="space-y-5">
-        <div className="flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadPhoto.isPending}
-            className="group relative h-24 w-24 overflow-hidden rounded-full border border-line bg-surface transition-colors hover:border-amber focus-visible:focus-ring"
-            aria-label="Rasm yuklash"
-          >
-            {form.photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={form.photoUrl} alt="Xodim rasmi" className="h-full w-full object-cover" />
-            ) : (
-              <span className="flex h-full w-full items-center justify-center text-ink-muted">
-                <Camera className="h-7 w-7" />
-              </span>
-            )}
-            <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-              <Camera className="h-6 w-6 text-white" />
-            </span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ACCEPTED_IMAGE_TYPES.join(",")}
-            onChange={handlePhotoChange}
-            className="hidden"
-          />
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-ink-muted">
-              {uploadPhoto.isPending ? "Yuklanmoqda..." : "Rasm (FaceID davomati uchun)"}
-            </span>
-            {form.photoUrl && !uploadPhoto.isPending && (
-              <button
-                type="button"
-                onClick={() => set("photoUrl", "")}
-                className="inline-flex items-center gap-0.5 text-xs text-negative hover:underline"
-              >
-                <X className="h-3 w-3" /> O'chirish
-              </button>
-            )}
-          </div>
-          {photoError && <span className="text-xs text-negative">{photoError}</span>}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Familiya" required>
-            <Input value={form.lastName} onChange={(e) => set("lastName", e.target.value)} placeholder="Familiya" />
-          </Field>
-          <Field label="Ism" required>
-            <Input value={form.firstName} onChange={(e) => set("firstName", e.target.value)} placeholder="Ism" />
-          </Field>
-          <Field label="Otasining ismi">
-            <Input value={form.middleName} onChange={(e) => set("middleName", e.target.value)} placeholder="Otasining ismi" />
-          </Field>
-          <Field label="Jinsi">
-            <Select
-              value={form.gender}
-              onChange={(e) => set("gender", e.target.value as FormState["gender"])}
-              options={[
-                { value: "", label: "Tanlang" },
-                { value: "male", label: "Erkak" },
-                { value: "female", label: "Ayol" },
-              ]}
-            />
-          </Field>
-          <Field label="Hujjat raqami">
-            <Input value={form.documentNumber} onChange={(e) => set("documentNumber", e.target.value)} placeholder="AA1234567" />
-          </Field>
-          <Field label="JSHSHIR (PINFL)">
-            <Input
-              value={form.pinfl}
-              onChange={(e) => set("pinfl", e.target.value.replace(/\D/g, "").slice(0, 14))}
-              placeholder="14 ta raqam"
-            />
-          </Field>
-          <Field label="Telefon">
-            <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+998 XX XXX XX XX" />
-          </Field>
-          <Field label="Tug'ilgan sana">
-            <DateInput value={form.birthDate} onChange={(iso) => set("birthDate", iso)} />
-          </Field>
-        </div>
+        <p className="rounded-lg border border-line bg-parchment/40 px-3 py-2 text-xs text-ink-muted">
+          Shaxsiy ma'lumotlar (ism, telefon, rasm...) Xodimlar sahifasidagi tahrir formasida o'zgartiriladi.
+        </p>
 
         <SectionTitle>Ish ma'lumotlari</SectionTitle>
         <div className="grid grid-cols-2 gap-3">
