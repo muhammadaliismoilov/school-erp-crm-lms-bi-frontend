@@ -69,10 +69,20 @@ export interface StaffMember {
   salary: number;
   qualificationCategory: QualificationCategory | null;
   qualificationDate: string | null;
+  /** KPI bonusi turi (null — KPI yo'q); qiymati percent'da foiz, fixed'da so'm. */
+  kpiMode: StaffKpiMode | null;
+  kpiValue: number;
   createdAt: string;
   /** Bog'langan o'qituvchilik yozuvi (faqat ro'yxat so'rovida to'ldiriladi) — 🎓 belgisi uchun. */
   teacher?: { id: string } | null;
 }
+
+export type StaffKpiMode = "percent" | "fixed";
+
+export const KPI_MODE_LABELS: Record<StaffKpiMode, string> = {
+  percent: "Baza foizi (%)",
+  fixed: "Qat'iy summa",
+};
 
 export interface PageMeta {
   page: number;
@@ -210,6 +220,16 @@ export function useUpdateStaff() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: Partial<StaffInput> }) => api.updateStaff(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: STAFF_KEY }),
+  });
+}
+
+/** KPI sozlamasi — alohida ruxsat (hr-staff-kpi.update) bilan PATCH /hr/staff/:id/kpi. */
+export function useUpdateStaffKpi() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, kpiMode, kpiValue }: { id: string; kpiMode: StaffKpiMode | null; kpiValue?: number }) =>
+      apiRequest<StaffMember>(`/hr/staff/${id}/kpi`, { method: "PATCH", body: { kpiMode, kpiValue } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: STAFF_KEY }),
   });
 }

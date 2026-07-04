@@ -63,6 +63,7 @@ import {
   type Teacher,
 } from "@/lib/api/hr-teachers";
 import { TeacherDrawer } from "@/components/hr/teacher-form-drawer";
+import { StaffFinanceTab } from "@/components/hr/staff-finance-tab";
 import { Badge, Card, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -77,6 +78,7 @@ import { formatMoney } from "@/lib/utils";
 const BASE_TABS = [
   { key: "overview", label: "Ma'lumotlar" },
   { key: "teaching", label: "O'qituvchilik" },
+  { key: "finance", label: "Moliya" },
   { key: "salary", label: "Maosh tarixi" },
   { key: "attendance", label: "Davomat" },
   { key: "certificates", label: "Sertifikatlar" },
@@ -211,6 +213,7 @@ function EmployeeDetail() {
 
       {activeTab === "overview" && <OverviewTab staff={staff} />}
       {activeTab === "teaching" && teacher && <TeacherInfoCard teacher={teacher} />}
+      {activeTab === "finance" && <StaffFinanceTab staff={staff} />}
       {activeTab === "salary" && <SalaryTab staffId={id} />}
       {activeTab === "attendance" && <AttendanceTab staffId={id} />}
       {activeTab === "certificates" && <CertificatesTab staffId={id} />}
