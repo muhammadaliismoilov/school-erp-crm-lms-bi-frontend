@@ -78,6 +78,9 @@ const api = {
   transition(id: string, action: PayrollTransition): Promise<PayrollRun> {
     return apiRequest<PayrollRun>(`/hr/payroll-runs/${id}/${action}`, { method: "POST" });
   },
+  mine(): Promise<PayrollRun[]> {
+    return apiRequest<PayrollRun[]>("/hr/payroll-runs/my");
+  },
 };
 
 const KEY = ["hr", "payroll-runs"] as const;
@@ -88,6 +91,15 @@ export function usePayrollRuns(params: PayrollRunParams) {
     queryFn: () => api.list(params),
     placeholderData: keepPreviousData,
     staleTime: 15_000,
+  });
+}
+
+/** Xodimning O'Z payslip'lari — maxsus ruxsat kerak emas (faqat tasdiqlangan+ holatlar). */
+export function useMyPayslips() {
+  return useQuery({
+    queryKey: [...KEY, "my"],
+    queryFn: () => api.mine(),
+    staleTime: 30_000,
   });
 }
 
