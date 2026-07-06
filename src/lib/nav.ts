@@ -6,6 +6,7 @@ import {
   SlidersHorizontal,
   BellRing,
   ReceiptText,
+  MonitorSmartphone,
   CalendarCheck,
   Calculator,
   Wallet,
@@ -212,6 +213,7 @@ export const NAV_ITEMS: NavEntry[] = [
   },
   { href: "/profile/notifications", labelKey: "nav.notifChannels", icon: BellRing },
   { href: "/profile/payslips", labelKey: "nav.myPayslips", icon: ReceiptText },
+  { href: "/profile/devices", labelKey: "nav.myDevices", icon: MonitorSmartphone },
   FINANCE_GROUP,
   HR_GROUP,
   {

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { authApi } from "@/lib/api/auth";
+import { authApi, isTwoFactorChallenge } from "@/lib/api/auth";
 import type { AuthenticatedUser } from "@/lib/api/types";
 import { hasPermission } from "./permissions";
 import { tokenStore } from "./tokens";
@@ -8,7 +8,10 @@ import { tokenStore } from "./tokens";
 interface AuthState {
   user: AuthenticatedUser | null;
   status: "loading" | "authenticated" | "anonymous";
-  signIn: (login: string, password: string) => Promise<void>;
+  /** 2FA talab qilinsa twoFactorToken qaytadi (token saqlanmaydi) — UI kod bosqichiga o'tadi. */
+  signIn: (login: string, password: string) => Promise<{ twoFactorToken?: string }>;
+  /** 2FA ikkinchi bosqichi — kod tasdiqlanib to'liq kirish. */
+  verifyTwoFactor: (twoFactorToken: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** Called by the API layer when a refresh fails. */
   forceSignOut: () => void;
@@ -23,7 +26,17 @@ export const useAuthStore = create<AuthState>()(
       status: "loading",
 
       async signIn(login, password) {
-        const tokens = await authApi.login(login, password);
+        const res = await authApi.login(login, password);
+        if (isTwoFactorChallenge(res)) {
+          return { twoFactorToken: res.twoFactorToken };
+        }
+        tokenStore.set(res.accessToken, res.refreshToken);
+        set({ user: res.user, status: "authenticated" });
+        return {};
+      },
+
+      async verifyTwoFactor(twoFactorToken, code) {
+        const tokens = await authApi.verifyTwoFactor(twoFactorToken, code);
         tokenStore.set(tokens.accessToken, tokens.refreshToken);
         set({ user: tokens.user, status: "authenticated" });
       },
