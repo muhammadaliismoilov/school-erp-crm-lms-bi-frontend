@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, History, Printer, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, type SelectOption } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/card";
 import { cn, loc } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/provider";
 import { useQuarters, useSubjects } from "@/lib/api/academic";
@@ -15,11 +15,17 @@ import {
   useScheduleTeachers,
   useScheduleGrid,
   useTeacherGrid,
+  useQuarterView,
   useDeleteCell,
   visibleDays,
   type LessonCell,
+  type QuarterCell,
 } from "@/lib/api/schedule";
 import { ScheduleGridView } from "@/components/academic/schedule/grid";
+import { QuarterViewGrid } from "@/components/academic/schedule/quarter-view";
+import { MonthViewGrid } from "@/components/academic/schedule/month-view";
+import { LessonEditModal } from "@/components/academic/schedule/lesson-edit-modal";
+import { useAuthStore } from "@/lib/auth/store";
 import { LessonModal } from "@/components/academic/schedule/lesson-modal";
 import { SubstituteModal } from "@/components/academic/schedule/substitute-modal";
 import { AutogenerateWizard } from "@/components/academic/schedule/autogenerate-wizard";
@@ -27,6 +33,7 @@ import { ConflictsDrawer } from "@/components/academic/schedule/conflicts-drawer
 import { HistoryDrawer } from "@/components/academic/schedule/history-drawer";
 
 type Tab = "primary" | "high" | "teacher";
+type ViewMode = "quarter" | "month" | "template";
 
 interface CellTarget {
   weekday: number;
@@ -36,9 +43,18 @@ interface CellTarget {
 
 export default function SchedulePage() {
   const { t } = useI18n();
+  const can = useAuthStore((s) => s.can);
+  // Tahrir amallari (avtogeneratsiya, qo'shish, o'chirish) faqat ruxsat bo'lsa.
+  const canManage =
+    can("lms-lessons.create") || can("lms-lessons.update") || can("lms-lessons.delete");
+
+  // ---- URL bilan sinxron holat (yangilash/ulashishda saqlanadi) ----
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const { data: quarters } = useQuarters();
-  const [quarterId, setQuarterId] = useState("");
+  const [quarterId, setQuarterId] = useState(() => searchParams.get("quarterId") ?? "");
   useEffect(() => {
     if (!quarterId && quarters && quarters.length) {
       const current = quarters.find((q) => q.status === "current") ?? quarters[0];
@@ -46,9 +62,10 @@ export default function SchedulePage() {
     }
   }, [quarters, quarterId]);
 
-  const [tab, setTab] = useState<Tab>("primary");
-  const [classId, setClassId] = useState("");
-  const [teacherId, setTeacherId] = useState("");
+  const [tab, setTab] = useState<Tab>(() => (searchParams.get("tab") as Tab) || "primary");
+  const [view, setView] = useState<ViewMode>(() => (searchParams.get("view") as ViewMode) || "quarter");
+  const [classId, setClassId] = useState(() => searchParams.get("classId") ?? "");
+  const [teacherId, setTeacherId] = useState(() => searchParams.get("teacherId") ?? "");
   const [dayFilter, setDayFilter] = useState<"all" | number>("all");
 
   const { data: classes } = useScheduleClasses(quarterId);
@@ -61,9 +78,15 @@ export default function SchedulePage() {
   const teacherGrid = useTeacherGrid(quarterId, tab === "teacher" ? teacherId : undefined);
   const grid = tab === "teacher" ? teacherGrid : classGrid;
 
+  const quarterView = useQuarterView(
+    view === "quarter" || view === "month" ? quarterId : undefined,
+    tab === "teacher" ? { teacherId } : { classId },
+  );
+
   const deleteCell = useDeleteCell();
 
   const [lessonTarget, setLessonTarget] = useState<CellTarget | null>(null);
+  const [editTarget, setEditTarget] = useState<{ cell: QuarterCell; periodId: string } | null>(null);
   const [substituteTarget, setSubstituteTarget] = useState<CellTarget | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [conflictsOpen, setConflictsOpen] = useState(false);
@@ -114,11 +137,38 @@ export default function SchedulePage() {
     [courses],
   );
 
-  // Tab almashganda tanlovni tozalash.
+  // Tab almashganda tanlovni tozalash — birinchi render (URL'dan kelgan tanlov) saqlanadi.
+  const firstTabRun = useRef(true);
   useEffect(() => {
+    if (firstTabRun.current) {
+      firstTabRun.current = false;
+      return;
+    }
     setClassId("");
     setTeacherId("");
   }, [tab]);
+
+  // Holatni URL query'ga yozish.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (quarterId) params.set("quarterId", quarterId);
+    params.set("view", view);
+    params.set("tab", tab);
+    if (tab === "teacher") {
+      if (teacherId) params.set("teacherId", teacherId);
+    } else if (classId) {
+      params.set("classId", classId);
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [quarterId, view, tab, classId, teacherId, pathname, router]);
+
+  // Ko'rinishlar: "template" (shablon tahrirlash) faqat boshqaruv ruxsati bo'lsa.
+  const viewModes: ViewMode[] = canManage
+    ? ["quarter", "month", "template"]
+    : ["quarter", "month"];
+  useEffect(() => {
+    if (view === "template" && !canManage) setView("quarter");
+  }, [view, canManage]);
 
   const days = grid.data?.days ?? [1, 2, 3, 4, 5];
   const filteredDays = visibleDays(days, dayFilter);
@@ -142,7 +192,7 @@ export default function SchedulePage() {
     <div className="space-y-4 p-4 sm:p-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="w-44">
+        <div className="no-print w-44">
           <Select
             options={quarterOptions}
             placeholder="Chorak"
@@ -150,16 +200,20 @@ export default function SchedulePage() {
             onChange={(e) => setQuarterId(e.target.value)}
           />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setHistoryOpen(true)} disabled={!quarterId}>
-            <History className="h-4 w-4" /> {t("sched.history")}
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setWizardOpen(true)} disabled={!quarterId}>
-            <Sparkles className="h-4 w-4" /> {t("sched.autogenerate")}
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setConflictsOpen(true)} disabled={!quarterId}>
-            <AlertTriangle className="h-4 w-4" /> {t("sched.conflicts")}
-          </Button>
+        <div className="no-print flex flex-wrap gap-2">
+          {canManage && (
+            <>
+              <Button variant="secondary" size="sm" onClick={() => setHistoryOpen(true)} disabled={!quarterId}>
+                <History className="h-4 w-4" /> {t("sched.history")}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setWizardOpen(true)} disabled={!quarterId}>
+                <Sparkles className="h-4 w-4" /> {t("sched.autogenerate")}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setConflictsOpen(true)} disabled={!quarterId}>
+                <AlertTriangle className="h-4 w-4" /> {t("sched.conflicts")}
+              </Button>
+            </>
+          )}
           <Button variant="secondary" size="sm" onClick={() => window.print()}>
             <Printer className="h-4 w-4" /> {t("sched.print")}
           </Button>
@@ -167,7 +221,7 @@ export default function SchedulePage() {
       </div>
 
       {/* Tabs + day filter */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1 rounded-lg border border-line p-1">
           {tabs.map((tabItem) => (
             <button
@@ -196,45 +250,82 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* Class / teacher selector */}
-      <div className="w-72">
-        {tab === "teacher" ? (
-          <Select
-            options={teacherOptions}
-            placeholder={t("sched.selectTeacher")}
-            value={teacherId}
-            onChange={(e) => setTeacherId(e.target.value)}
-          />
-        ) : (
-          <Select
-            options={classOptions}
-            placeholder={t("sched.selectClass")}
-            value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-          />
-        )}
+      {/* Class / teacher selector + view switcher */}
+      <div className="no-print flex flex-wrap items-center justify-between gap-3">
+        <div className="w-72">
+          {tab === "teacher" ? (
+            <Select
+              options={teacherOptions}
+              placeholder={t("sched.selectTeacher")}
+              value={teacherId}
+              onChange={(e) => setTeacherId(e.target.value)}
+            />
+          ) : (
+            <Select
+              options={classOptions}
+              placeholder={t("sched.selectClass")}
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+            />
+          )}
+        </div>
+        <div className="flex gap-1 rounded-lg border border-line p-1">
+          {viewModes.map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setView(v)}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                view === v ? "bg-accent text-accent-fg" : "text-ink-soft hover:bg-parchment",
+              )}
+            >
+              {t(`sched.view.${v}`)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Grid */}
+      <div className="print-area space-y-4">
       {tab !== "teacher" && !classId ? (
         <EmptyState text={t("sched.chooseClassHint")} />
       ) : tab === "teacher" && !teacherId ? (
         <EmptyState text={t("sched.chooseTeacherHint")} />
+      ) : view === "quarter" || view === "month" ? (
+        quarterView.isLoading ? (
+          <ScheduleSkeleton />
+        ) : quarterView.data ? (
+          view === "month" ? (
+            <MonthViewGrid
+              view={quarterView.data}
+              mode={tab === "teacher" ? "teacher" : "class"}
+              onEditCell={canManage ? (cell, periodId) => setEditTarget({ cell, periodId }) : undefined}
+            />
+          ) : (
+            <QuarterViewGrid
+              view={quarterView.data}
+              days={filteredDays}
+              mode={tab === "teacher" ? "teacher" : "class"}
+              onEditCell={canManage ? (cell, periodId) => setEditTarget({ cell, periodId }) : undefined}
+            />
+          )
+        ) : null
       ) : grid.isLoading ? (
-        <div className="flex justify-center py-16">
-          <Spinner />
-        </div>
+        <ScheduleSkeleton />
       ) : grid.data ? (
         <ScheduleGridView
           grid={grid.data}
           days={filteredDays}
           mode={tab === "teacher" ? "teacher" : "class"}
+          readOnly={!canManage}
           onAdd={(weekday, periodId) => setLessonTarget({ weekday, periodId, cell: null })}
           onEdit={(cell, weekday, periodId) => setLessonTarget({ weekday, periodId, cell })}
           onSubstitute={(cell, weekday, periodId) => setSubstituteTarget({ weekday, periodId, cell })}
           onDelete={(cell) => handleDelete(cell)}
         />
       ) : null}
+      </div>
 
       {/* Toast */}
       {toast && (
@@ -249,6 +340,23 @@ export default function SchedulePage() {
       )}
 
       {/* Modals */}
+      {editTarget && quarterView.data && (
+        <LessonEditModal
+          open
+          onClose={() => setEditTarget(null)}
+          quarterId={quarterId}
+          cell={editTarget.cell}
+          periodId={editTarget.periodId}
+          periodLabel={quarterView.data.periods.find((p) => p.id === editTarget.periodId)?.code ?? ""}
+          currentClassName={editTarget.cell.className ?? currentClassName}
+          subjects={subjectOptions}
+          teachers={teacherOptions}
+          rooms={roomOptions}
+          classes={allClassOptions}
+          onDone={() => showToast(t("sched.common.update"))}
+        />
+      )}
+
       {lessonTarget && classId && (
         <LessonModal
           open
@@ -330,6 +438,30 @@ function EmptyState({ text }: { text: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line py-20 text-center">
       <p className="text-sm text-ink-muted">{text}</p>
+    </div>
+  );
+}
+
+/** Jadval yuklanayotganda tuzilma ko'rinadigan skeleton (spinner o'rniga). */
+function ScheduleSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="overflow-hidden rounded-xl border border-line bg-surface">
+          <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+            <div className="h-4 w-4 animate-pulse rounded bg-line" />
+            <div className="h-4 w-24 animate-pulse rounded bg-line" />
+            <div className="ml-auto h-4 w-16 animate-pulse rounded bg-line" />
+          </div>
+          {i === 0 && (
+            <div className="grid grid-cols-6 gap-px bg-line p-px">
+              {Array.from({ length: 18 }).map((_, j) => (
+                <div key={j} className="h-14 animate-pulse bg-surface" />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -10,16 +10,20 @@ interface Props {
   grid: ScheduleGrid;
   days: number[];
   mode: "class" | "teacher";
+  /** Tahrir amallarini yashiradi (ruxsati yo'q foydalanuvchi uchun). */
+  readOnly?: boolean;
   onAdd?: (weekday: number, periodId: string) => void;
   onEdit?: (cell: LessonCell, weekday: number, periodId: string) => void;
   onDelete?: (cell: LessonCell, weekday: number, periodId: string) => void;
   onSubstitute?: (cell: LessonCell, weekday: number, periodId: string) => void;
 }
 
-export function ScheduleGridView({ grid, days, mode, onAdd, onEdit, onDelete, onSubstitute }: Props) {
+export function ScheduleGridView({ grid, days, mode, readOnly, onAdd, onEdit, onDelete, onSubstitute }: Props) {
   const { t } = useI18n();
   const [menu, setMenu] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  // Faqat sinf rejimida VA ruxsat bo'lganda tahrir qilinadi.
+  const interactive = mode === "class" && !readOnly;
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -65,19 +69,19 @@ export function ScheduleGridView({ grid, days, mode, onAdd, onEdit, onDelete, on
                 <button
                   key={day}
                   type="button"
-                  disabled={mode !== "class"}
-                  onClick={() => mode === "class" && onAdd?.(day, period.id)}
+                  disabled={!interactive}
+                  onClick={() => interactive && onAdd?.(day, period.id)}
                   className={cn(
                     "group relative min-h-[68px] border-r border-line p-2 text-left last:border-r-0",
-                    mode === "class" && "hover:bg-parchment",
+                    interactive && "hover:bg-parchment",
                   )}
                 >
-                  {mode === "class" && (
+                  {interactive && (
                     <span className="pointer-events-none flex h-full items-center justify-center text-ink-muted/50 group-hover:hidden">
                       {t("sched.empty")}
                     </span>
                   )}
-                  {mode === "class" && (
+                  {interactive && (
                     <span className="absolute inset-0 hidden items-center justify-center group-hover:flex">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-fg">
                         <Plus className="h-4 w-4" />
@@ -106,7 +110,7 @@ export function ScheduleGridView({ grid, days, mode, onAdd, onEdit, onDelete, on
                       </span>
                     )}
                   </div>
-                  {mode === "class" && (
+                  {interactive && (
                     <button
                       type="button"
                       onClick={() => setMenu(menu === menuKey ? null : menuKey)}
@@ -118,7 +122,7 @@ export function ScheduleGridView({ grid, days, mode, onAdd, onEdit, onDelete, on
                   )}
                 </div>
 
-                {menu === menuKey && mode === "class" && (
+                {menu === menuKey && interactive && (
                   <div className="absolute right-2 top-8 z-10 w-44 overflow-hidden rounded-lg border border-line bg-surface shadow-card">
                     <MenuItem
                       icon={<Pencil className="h-3.5 w-3.5" />}

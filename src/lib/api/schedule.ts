@@ -56,6 +56,32 @@ export interface ScheduleGrid {
   subjects: SubjectLegend[];
 }
 
+/** Chorak ko'rinishi katagi — sanasi bilan, siqilmagan. */
+export interface QuarterCell extends LessonCell {
+  lessonDate: string;
+  weekday: number;
+}
+
+export interface QuarterWeek {
+  weekNumber: number;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  cells: Record<string, QuarterCell>;
+}
+
+export interface QuarterView {
+  quarterId: string;
+  classId: string | null;
+  teacherId: string | null;
+  startDate: string;
+  endDate: string;
+  days: number[];
+  periods: SchedulePeriod[];
+  weeks: QuarterWeek[];
+  subjects: SubjectLegend[];
+}
+
 export interface ScheduleConflict {
   type: "teacher" | "room" | "class";
   weekday: number;
@@ -133,11 +159,33 @@ export interface CreateCellPayload {
   fromToday?: boolean;
 }
 
+export type EditScope = "single" | "future" | "all";
+
 export interface UpdateCellPayload {
   subjectId?: string;
   teacherId?: string;
   roomId?: string;
   courseId?: string;
+  /** Darsni boshqa sinfga ko'chirish. */
+  classId?: string;
+  /** Qamrov: single=shu kun, future=bugun+kelgusi, all=butun chorak. */
+  scope?: EditScope;
+}
+
+export interface CellAvailability {
+  lessonDate: string;
+  lessonPeriodId: string;
+  busyTeacherIds: string[];
+  busyRoomIds: string[];
+  busyClassIds: string[];
+}
+
+/** Jadval konflikti (409 SCHEDULE_CONFLICT javobidagi details). */
+export interface ScheduleConflictDetail {
+  type: "teacher" | "room" | "class";
+  date: string;
+  entityName: string | null;
+  className: string | null;
 }
 
 export interface SubstitutePayload {
@@ -211,6 +259,40 @@ export function useTeacherGrid(quarterId?: string, teacherId?: string) {
       apiRequest<ScheduleGrid>("/lms/lessons/grid/by-teacher", { query: { quarterId, teacherId } }),
     enabled: Boolean(quarterId && teacherId),
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useQuarterView(
+  quarterId?: string,
+  opts?: { classId?: string; teacherId?: string },
+) {
+  const classId = opts?.classId;
+  const teacherId = opts?.teacherId;
+  return useQuery({
+    queryKey: [...GRID_KEY, "quarter", quarterId, classId, teacherId],
+    queryFn: () =>
+      apiRequest<QuarterView>("/lms/lessons/quarter-view", {
+        query: { quarterId, classId, teacherId },
+      }),
+    enabled: Boolean(quarterId && (classId || teacherId)),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useCellAvailability(
+  quarterId?: string,
+  lessonDate?: string,
+  lessonPeriodId?: string,
+  excludeId?: string,
+) {
+  return useQuery({
+    queryKey: ["schedule", "availability", quarterId, lessonDate, lessonPeriodId, excludeId],
+    queryFn: () =>
+      apiRequest<CellAvailability>("/lms/lessons/availability", {
+        query: { quarterId, lessonDate, lessonPeriodId, excludeId },
+      }),
+    enabled: Boolean(quarterId && lessonDate && lessonPeriodId),
+    staleTime: 10_000,
   });
 }
 
