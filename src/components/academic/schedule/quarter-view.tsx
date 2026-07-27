@@ -88,35 +88,42 @@ export function QuarterViewGrid({ view, days, mode, onEditCell }: Props) {
             key={week.startDate}
             ref={week.isCurrent ? currentRef : undefined}
             className={cn(
-              "print-block overflow-hidden rounded-xl border bg-surface",
+              // `overflow-hidden` YO'Q: u sticky uchun skroll konteyneri hosil qilib,
+              // sarlavhaning yopishishini buzadi. Burchaklar bolalarga yumaltiriladi.
+              "print-block rounded-xl border bg-surface",
               week.isCurrent ? "border-accent/50" : "border-line",
             )}
           >
-            <button
-              type="button"
-              onClick={() => toggle(week.startDate)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-parchment"
-            >
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 shrink-0 text-ink-muted transition-transform",
-                  isOpen && "rotate-180",
+            {/* Hafta sarlavhasi + kunlar qatori bitta yopishqoq blok — sahifa skrollida
+                topbar (h-16) ostida turadi, sehrli ofsetlarsiz. */}
+            <div className="sticky top-16 z-10 rounded-t-xl bg-surface">
+              <button
+                type="button"
+                onClick={() => toggle(week.startDate)}
+                className="flex w-full items-center gap-3 rounded-t-xl px-4 py-3 text-left hover:bg-parchment"
+              >
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-ink-muted transition-transform",
+                    isOpen && "rotate-180",
+                  )}
+                />
+                <span className="text-sm font-semibold text-ink">{weekLabel(week.weekNumber)}</span>
+                <span className="text-xs text-ink-muted">{rangeLabel(week.startDate, week.endDate)}</span>
+                {week.isCurrent && (
+                  <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-medium text-accent">
+                    {t("sched.today")}
+                  </span>
                 )}
-              />
-              <span className="text-sm font-semibold text-ink">{weekLabel(week.weekNumber)}</span>
-              <span className="text-xs text-ink-muted">{rangeLabel(week.startDate, week.endDate)}</span>
-              {week.isCurrent && (
-                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-medium text-accent">
-                  {t("sched.today")}
+                <span className="ml-auto text-xs text-ink-muted">
+                  {count} {t("sched.wz.unit.lesson")}
                 </span>
-              )}
-              <span className="ml-auto text-xs text-ink-muted">
-                {count} {t("sched.wz.unit.lesson")}
-              </span>
-            </button>
+              </button>
+              {isOpen && <DayHeaderRow days={days} />}
+            </div>
 
             {isOpen && (
-              <div className="border-t border-line">
+              <div className="overflow-hidden rounded-b-xl">
                 <WeekGrid week={week} days={days} periods={view.periods} mode={mode} onEditCell={onEditCell} />
               </div>
             )}
@@ -139,6 +146,26 @@ export function QuarterViewGrid({ view, days, mode, onEditCell }: Props) {
   );
 }
 
+/** Para ustuni + kunlar uchun umumiy grid ustunlari (sarlavha va tana mos kelishi shart). */
+const gridColsFor = (dayCount: number) => ({
+  gridTemplateColumns: `64px repeat(${dayCount}, minmax(0, 1fr))`,
+});
+
+/** Yopishqoq sarlavha ichida turadigan kunlar qatori. */
+function DayHeaderRow({ days }: { days: number[] }) {
+  const { t } = useI18n();
+  return (
+    <div className="grid border-y border-line bg-parchment" style={gridColsFor(days.length)}>
+      <div className="px-2 py-2" />
+      {days.map((d) => (
+        <div key={d} className="px-3 py-2 text-center text-xs font-semibold text-ink">
+          {t(`sched.day.${d}`)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function WeekGrid({
   week,
   days,
@@ -152,21 +179,10 @@ function WeekGrid({
   mode: "class" | "teacher";
   onEditCell?: (cell: QuarterCell, periodId: string) => void;
 }) {
-  const { t } = useI18n();
-  const gridCols = { gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` };
+  const gridCols = gridColsFor(days.length);
 
   return (
-    <div className="overflow-x-auto">
-      {/* Kunlar sarlavhasi */}
-      <div className="grid border-b border-line bg-parchment/50" style={gridCols}>
-        <div className="px-2 py-2" />
-        {days.map((d) => (
-          <div key={d} className="px-3 py-2 text-center text-xs font-semibold text-ink">
-            {t(`sched.day.${d}`)}
-          </div>
-        ))}
-      </div>
-
+    <>
       {periods.map((period) => (
         <div key={period.id} className="grid border-b border-line last:border-b-0" style={gridCols}>
           <div className="flex flex-col items-center justify-center border-r border-line px-1 py-3">
@@ -231,6 +247,6 @@ function WeekGrid({
           })}
         </div>
       ))}
-    </div>
+    </>
   );
 }

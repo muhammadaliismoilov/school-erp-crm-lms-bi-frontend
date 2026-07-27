@@ -215,23 +215,25 @@ function MonthCalendar({
     return cells;
   }, [year, month]);
 
+  // `overflow-hidden` YO'Q: sticky sarlavha uchun skroll konteyneri bo'lmasligi kerak.
   return (
-    <div className="print-block overflow-hidden rounded-xl border border-line bg-surface">
-      <div className="border-b border-line bg-parchment px-4 py-2.5">
-        <h3 className="text-sm font-semibold text-ink">{title}</h3>
-      </div>
-
-      {/* Hafta kunlari sarlavhasi */}
-      <div className="grid grid-cols-7 border-b border-line">
-        {weekdayHeads.map((d) => (
-          <div key={d} className="px-2 py-2 text-center text-[11px] font-semibold text-ink-muted">
-            {t(`sched.day.${d}`).slice(0, 2)}
-          </div>
-        ))}
+    <div className="print-block rounded-xl border border-line bg-surface">
+      {/* Oy nomi + hafta kunlari — topbar (h-16) ostida yopishib turadi. */}
+      <div className="sticky top-16 z-10 rounded-t-xl bg-parchment">
+        <div className="border-b border-line px-4 py-2.5">
+          <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        </div>
+        <div className="grid grid-cols-7 border-b border-line">
+          {weekdayHeads.map((d) => (
+            <div key={d} className="px-2 py-2 text-center text-[11px] font-semibold text-ink-muted">
+              {t(`sched.day.${d}`).slice(0, 2)}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Kunlar */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 overflow-hidden rounded-b-xl">
         {days.map((d) => {
           const dateStr = iso(d);
           const inMonth = d.getUTCMonth() === month;

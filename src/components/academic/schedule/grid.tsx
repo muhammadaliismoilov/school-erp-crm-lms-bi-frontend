@@ -36,9 +36,14 @@ export function ScheduleGridView({ grid, days, mode, readOnly, onAdd, onEdit, on
   const gridCols = { gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` };
 
   return (
-    <div ref={ref} className="overflow-x-auto rounded-xl border border-line bg-surface print-grid">
-      {/* Header */}
-      <div className="grid border-b border-line bg-parchment" style={gridCols}>
+    // `overflow-x-auto` YO'Q: ustunlar `minmax(0,1fr)` bilan siqiladi, gorizontal skroll
+    // yuzaga kelmaydi, lekin u sticky sarlavhani buzardi.
+    <div ref={ref} className="rounded-xl border border-line bg-surface print-grid">
+      {/* Header — topbar (h-16) ostida yopishib turadi. */}
+      <div
+        className="sticky top-16 z-10 grid rounded-t-xl border-b border-line bg-parchment"
+        style={gridCols}
+      >
         <div className="px-2 py-3" />
         {days.map((d) => (
           <div key={d} className="px-3 py-3 text-center text-sm font-semibold text-ink">
@@ -159,7 +164,7 @@ export function ScheduleGridView({ grid, days, mode, readOnly, onAdd, onEdit, on
 
       {/* Legend */}
       {grid.subjects.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line bg-parchment px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-b-xl border-t border-line bg-parchment px-3 py-2.5">
           <span className="text-xs font-medium text-ink-muted">{t("sched.legend")}:</span>
           {grid.subjects.map((s) => (
             <span key={s.id} className="flex items-center gap-1.5 text-xs text-ink-soft">

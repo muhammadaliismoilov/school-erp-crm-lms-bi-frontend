@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, History, Printer, Sparkles } from "lucide-react";
+import { AlertTriangle, FileSpreadsheet, History, Printer, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { cn, loc } from "@/lib/utils";
@@ -21,6 +21,13 @@ import {
   type LessonCell,
   type QuarterCell,
 } from "@/lib/api/schedule";
+import {
+  buildQuarterWorkbook,
+  buildTemplateWorkbook,
+  downloadXlsx,
+  safeFileName,
+  type ScheduleExportLabels,
+} from "@/lib/export/schedule-xlsx";
 import { ScheduleGridView } from "@/components/academic/schedule/grid";
 import { QuarterViewGrid } from "@/components/academic/schedule/quarter-view";
 import { MonthViewGrid } from "@/components/academic/schedule/month-view";
@@ -174,6 +181,54 @@ export default function SchedulePage() {
   const filteredDays = visibleDays(days, dayFilter);
   const currentClassName = classOptions.find((c) => c.value === classId)?.label ?? "";
 
+  // -------- Excel eksport --------
+  const isTemplateView = view === "template";
+  const canExport = isTemplateView ? Boolean(grid.data) : Boolean(quarterView.data);
+
+  const handleExport = () => {
+    const targetName =
+      tab === "teacher"
+        ? teacherOptions.find((o) => o.value === teacherId)?.label ?? ""
+        : currentClassName;
+    const quarterName = quarterOptions.find((q) => q.value === quarterId)?.label ?? "";
+
+    const labels: ScheduleExportLabels = {
+      title: [targetName, quarterName].filter(Boolean).join(" · "),
+      gridSheet: isTemplateView ? t("sched.view.template") : t("sched.exp.sheetGrid"),
+      listSheet: t("sched.exp.sheetList"),
+      week: (n) => t("sched.weekN").replace("{n}", String(n)),
+      day: (d) => t(`sched.day.${d}`),
+      period: t("sched.exp.period"),
+      date: t("sched.exp.date"),
+      weekCol: t("sched.exp.week"),
+      dayCol: t("sched.exp.day"),
+      start: t("sched.exp.start"),
+      end: t("sched.exp.end"),
+      subject: t("sched.exp.subject"),
+      teacher: t("sched.exp.teacher"),
+      className: t("sched.exp.class"),
+      room: t("sched.exp.room"),
+      substituted: t("sched.exp.substituted"),
+      yes: t("sched.exp.yes"),
+    };
+
+    // Ekranda ko'ringan kunlar eksport qilinadi (kun filtri ham hisobga olinadi).
+    const opts = {
+      days: filteredDays,
+      mode: (tab === "teacher" ? "teacher" : "class") as "class" | "teacher",
+      labels,
+      localize: loc,
+    };
+
+    const sheets = isTemplateView
+      ? grid.data && buildTemplateWorkbook(grid.data, opts)
+      : quarterView.data && buildQuarterWorkbook(quarterView.data, opts);
+    if (!sheets) return;
+
+    downloadXlsx(safeFileName([t("sched.exp.sheetGrid"), targetName, quarterName]), sheets);
+    showToast(t("sched.exp.done"));
+  };
+
   const handleDelete = (cell: LessonCell) => {
     if (window.confirm(`${t("sched.menu.delete")}?`)) {
       deleteCell.mutate(cell.id, {
@@ -214,6 +269,9 @@ export default function SchedulePage() {
               </Button>
             </>
           )}
+          <Button variant="secondary" size="sm" onClick={handleExport} disabled={!canExport}>
+            <FileSpreadsheet className="h-4 w-4" /> {t("sched.export")}
+          </Button>
           <Button variant="secondary" size="sm" onClick={() => window.print()}>
             <Printer className="h-4 w-4" /> {t("sched.print")}
           </Button>

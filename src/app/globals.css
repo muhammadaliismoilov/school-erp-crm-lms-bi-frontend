@@ -232,6 +232,11 @@ body {
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  /* Ekranda yopishqoq sarlavhalar bosmada oddiy oqimda turishi kerak — aks holda
+     `.print-area { position: absolute }` bilan birga kontent ustiga chiqadi. */
+  .print-area .sticky {
+    position: static !important;
+  }
 }
 
 @page {
