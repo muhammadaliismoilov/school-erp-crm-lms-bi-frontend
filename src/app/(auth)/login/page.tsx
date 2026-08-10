@@ -77,10 +77,10 @@ export default function LoginPage() {
       <section className="bg-navy-texture relative hidden flex-col justify-between p-12 lg:flex">
         <div className="flex items-center gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent font-display text-xl font-extrabold text-accent-fg">
-            Y
+            S
           </span>
           <span className="font-display text-xl font-bold tracking-tight text-paper">
-            Yuton Console
+            School Console
           </span>
         </div>
         <div className="max-w-md">
@@ -88,25 +88,9 @@ export default function LoginPage() {
             Bitta platforma — butun maktab boshqaruvi.
           </h2>
           <p className="mt-4 text-paper/55">
-            Ta'lim, davomat, moliya, qabul va boshqalar — yagona xavfsiz tizimda.
-            Gurlan va Yangibozor filiallari uchun.
+            Ta'lim, davomat, moliya va qabul — bitta xavfsiz tizimda.
+            Istalgan xususiy maktab uchun.
           </p>
-        </div>
-        <div className="flex gap-8 text-paper/70">
-          {[
-            ["42", "Modul"],
-            ["304", "Endpoint"],
-            ["12", "Rol"],
-          ].map(([value, label]) => (
-            <div key={label}>
-              <p className="font-display text-2xl font-bold text-accent">
-                {value}
-              </p>
-              <p className="font-mono text-xs uppercase tracking-[0.16em]">
-                {label}
-              </p>
-            </div>
-          ))}
         </div>
       </section>
 

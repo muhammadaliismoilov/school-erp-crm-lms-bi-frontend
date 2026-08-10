@@ -19,7 +19,6 @@ import {
   Plane,
   ListTodo,
   UserPlus,
-  TerminalSquare,
   CalendarDays,
   BookOpen,
   BookMarked,
@@ -63,8 +62,6 @@ export interface NavLeaf {
   icon: LucideIcon;
   /** Required permission; omit for always-visible items. */
   permission?: string;
-  /** Optional badge text rendered on the right (e.g. endpoint count). */
-  badge?: "explorer";
 }
 
 export interface NavGroup {
@@ -187,7 +184,6 @@ export const HR_GROUP: NavGroup = {
 
 export const NAV_ITEMS: NavEntry[] = [
   { href: "/", labelKey: "nav.dashboard", icon: LayoutDashboard },
-  { href: "/explorer", labelKey: "nav.explorer", icon: TerminalSquare, badge: "explorer" },
   ACADEMIC_GROUP,
   {
     id: "attendance",

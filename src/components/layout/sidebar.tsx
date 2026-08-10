@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { ChevronDown, LogOut } from "lucide-react";
 import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import {
@@ -12,8 +12,7 @@ import {
   type NavGroup,
   type NavLeaf,
 } from "@/lib/nav";
-import { API_MODULES, API_TOTAL_ENDPOINTS } from "@/lib/api/manifest";
-import { cn } from "@/lib/utils";
+import { cn, initials } from "@/lib/utils";
 
 function isLeafActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -47,11 +46,6 @@ function NavLeafLink({
       )}
       <Icon className={cn(nested ? "h-4 w-4" : "h-[18px] w-[18px]")} />
       <span className="flex-1 truncate">{t(item.labelKey)}</span>
-      {item.badge === "explorer" && (
-        <span className="rounded-md bg-accent px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-accent-fg">
-          {API_TOTAL_ENDPOINTS}
-        </span>
-      )}
     </Link>
   );
 }
@@ -104,18 +98,26 @@ function NavGroupItem({ group }: { group: NavGroup }) {
 
 export function Sidebar() {
   const { t } = useI18n();
+  const router = useRouter();
   const can = useAuthStore((s) => s.can);
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
   const visible = NAV_ITEMS.filter((entry) => can(entry.permission));
+
+  async function handleSignOut() {
+    await signOut();
+    router.replace("/login");
+  }
 
   return (
     <aside className="bg-navy-texture sticky top-0 hidden h-screen w-64 shrink-0 flex-col px-4 py-6 lg:flex">
       <div className="flex items-center gap-3 px-2">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent font-display text-xl font-extrabold text-accent-fg">
-          Y
+          S
         </span>
         <div className="leading-tight">
           <p className="font-display text-lg font-bold tracking-tight text-paper">
-            Yuton
+            School
           </p>
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/45">
             console
@@ -136,19 +138,31 @@ export function Sidebar() {
         )}
       </nav>
 
-      <div className="mt-4 space-y-3 px-1 pt-4">
-        <div className="rounded-xl border border-paper/10 bg-paper/[0.04] px-3 py-2.5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/40">
-            API qamrovi
-          </p>
-          <p className="mt-1 font-display text-sm font-semibold text-paper/85">
-            {API_MODULES.length} modul ·{" "}
-            <span className="text-accent">{API_TOTAL_ENDPOINTS}</span> endpoint
-          </p>
-        </div>
-        <p className="px-2 font-mono text-[10px] text-paper/30">
-          v0.2 · Gurlan, Xorazm
-        </p>
+      <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-paper/10 bg-paper/[0.04] px-2 py-2">
+        <Link
+          href="/profile"
+          title="Mening profilim"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 py-1 transition-colors hover:bg-paper/8"
+        >
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent text-sm font-semibold text-accent-fg">
+            {initials(user?.username, user?.roles?.[0])}
+          </span>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-medium text-paper">
+              {user?.username}
+            </p>
+            <p className="truncate text-[11px] text-paper/45">
+              {user?.roles?.[0]}
+            </p>
+          </div>
+        </Link>
+        <button
+          onClick={handleSignOut}
+          title={t("nav.logout")}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-paper/50 transition-colors hover:bg-paper/8 hover:text-negative"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
       </div>
     </aside>
   );
