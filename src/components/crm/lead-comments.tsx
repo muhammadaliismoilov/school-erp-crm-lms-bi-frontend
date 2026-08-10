@@ -199,7 +199,7 @@ function CommentItem({
   t: (key: string) => string;
 }) {
   return (
-    <li className={`rounded-xl border p-3 ${c.isPinned ? "border-amber/40 bg-amber/5" : "border-line"}`}>
+    <li className={`rounded-xl border p-3 transition-colors ${c.isPinned ? "border-amber/40 bg-amber/5" : isOwner ? "border-accent/30 bg-accent/10" : "border-line bg-parchment/70"}`}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-sm font-medium text-ink">{c.author?.fullName || t("crm.history.system")}</span>
         <span className="text-xs text-ink-muted tnum">{fmt(c.createdAt)}</span>
@@ -218,7 +218,7 @@ function CommentItem({
           </div>
         </div>
       ) : (
-        <p className="mt-1 whitespace-pre-line text-sm text-ink-soft">{c.body}</p>
+        <p className={`mt-1 whitespace-pre-line text-sm ${isOwner ? "text-ink" : "text-ink-soft"}`}>{c.body}</p>
       )}
 
       {c.remindAt && !editing && (
