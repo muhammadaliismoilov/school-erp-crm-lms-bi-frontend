@@ -14,6 +14,7 @@ import { useStudentGrades } from "@/lib/api/student-profile";
 import { Card, Spinner } from "@/components/ui/card";
 import { StatCard } from "@/components/students/stat-card";
 import { Award, BarChart3, GraduationCap, TrendingUp } from "lucide-react";
+import { ACCENT_GREEN } from "@/lib/charts/palette";
 
 const DIST = [
   { key: "excellent", label: "A'lo (5)", color: "bg-emerald-500" },
@@ -67,8 +68,8 @@ export function GradesTab({ studentId }: { studentId: string }) {
               <AreaChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
                 <defs>
                   <linearGradient id="gpaFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--accent, #14b8a6)" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="var(--accent, #14b8a6)" stopOpacity={0} />
+                    <stop offset="0%" stopColor={ACCENT_GREEN} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={ACCENT_GREEN} stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-line" />
@@ -78,7 +79,7 @@ export function GradesTab({ studentId }: { studentId: string }) {
                   contentStyle={{ borderRadius: 8, fontSize: 12, border: "1px solid var(--line, #e5e7eb)" }}
                   formatter={(v) => [Number(v).toFixed(2), "GPA"]}
                 />
-                <Area type="monotone" dataKey="gpa" stroke="var(--accent, #14b8a6)" strokeWidth={2} fill="url(#gpaFill)" />
+                <Area type="monotone" dataKey="gpa" stroke={ACCENT_GREEN} strokeWidth={2} fill="url(#gpaFill)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

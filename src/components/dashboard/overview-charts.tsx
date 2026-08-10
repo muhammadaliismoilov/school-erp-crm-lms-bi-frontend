@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -14,6 +15,7 @@ import {
 import type { DashboardOverview } from "@/lib/api/dashboard";
 import { formatMoney } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { ACCENT_GREEN, greenRamp } from "@/lib/charts/palette";
 
 const MONTH_SHORT = ["Yan", "Fev", "Mar", "Apr", "May", "Iyn", "Iyl", "Avg", "Sen", "Okt", "Noy", "Dek"];
 
@@ -41,6 +43,8 @@ export function RevenueChart({ spark }: { spark: number[] }) {
     const d = new Date(now.getFullYear(), now.getMonth() - (spark.length - 1 - i), 1);
     return { name: `${MONTH_SHORT[d.getMonth()]}`, full: `${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`, sum };
   });
+  // har oy — o'z ohangi; laymdan feruzagacha bir tekis o'tadi
+  const colors = greenRamp(rows.length);
   return (
     <ChartCard title="Tushum dinamikasi (12 oy)">
       <ResponsiveContainer width="100%" height="100%">
@@ -59,7 +63,11 @@ export function RevenueChart({ spark }: { spark: number[] }) {
               ) : null
             }
           />
-          <Bar dataKey="sum" fill="var(--accent, #d4a537)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="sum" radius={[4, 4, 0, 0]}>
+            {rows.map((r, i) => (
+              <Cell key={r.full} fill={colors[i]} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -97,7 +105,7 @@ export function AttendanceTrendChart({ trend }: { trend: NonNullable<DashboardOv
                 ) : null
               }
             />
-            <Line type="monotone" dataKey="pct" stroke="#10b981" strokeWidth={2} dot={false} connectNulls={false} />
+            <Line type="monotone" dataKey="pct" stroke={ACCENT_GREEN} strokeWidth={2} dot={false} connectNulls={false} />
           </LineChart>
         </ResponsiveContainer>
       ) : (
@@ -124,23 +132,31 @@ export function LeadFunnelChart({ funnel }: { funnel: NonNullable<DashboardOverv
   const stages = funnel.filter((f) => f.status !== "rejected");
   const rejected = funnel.find((f) => f.status === "rejected");
   const max = Math.max(...stages.map((s) => s.count), 1);
+  // har bosqich — o'z ohangi (laymdan feruzagacha), shartnoma eng to'q bo'lib tugaydi
+  const colors = greenRamp(stages.length);
 
   return (
     <ChartCard title="Lidlar voronkasi">
       <div className="flex h-full flex-col justify-center gap-2">
         {stages.map((s, i) => {
-          const isLast = i === stages.length - 1;
+          const pct = Math.max((s.count / max) * 100, s.count > 0 ? 6 : 0);
+          // raqam ustun ichiga sig'sa — ichida oq bilan, aks holda yo'lakchada
+          const inside = pct >= 22;
           return (
             <div key={s.status} className="flex items-center gap-2 text-xs">
               <span className="w-24 shrink-0 text-ink-soft">{FUNNEL_LABELS[s.status] ?? s.status}</span>
               <div className="relative h-6 flex-1 overflow-hidden rounded-md bg-parchment/60">
                 <div
-                  className={`h-full rounded-md ${isLast ? "bg-emerald-500/80" : "bg-amber/70"}`}
-                  style={{ width: `${Math.max((s.count / max) * 100, s.count > 0 ? 6 : 0)}%` }}
-                />
-                <span className="tnum absolute inset-y-0 right-2 grid place-items-center font-semibold text-ink">
-                  {s.count}
-                </span>
+                  className="flex h-full items-center justify-end rounded-md pr-2"
+                  style={{ width: `${pct}%`, backgroundColor: colors[i] }}
+                >
+                  {inside && <span className="tnum font-semibold text-white/95">{s.count}</span>}
+                </div>
+                {!inside && (
+                  <span className="tnum absolute inset-y-0 right-2 grid place-items-center font-semibold text-ink">
+                    {s.count}
+                  </span>
+                )}
               </div>
             </div>
           );
