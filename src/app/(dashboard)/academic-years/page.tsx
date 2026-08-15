@@ -9,11 +9,12 @@ import {
   type AcademicYear,
 } from "@/lib/api/academic-years";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
@@ -53,8 +54,6 @@ function StatCard({
 
 export default function AcademicYearsPage() {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("academic.manage");
 
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -102,6 +101,37 @@ export default function AcademicYearsPage() {
     }
   }
 
+  const rowActions: RowAction<AcademicYear>[] = [
+    {
+      key: "setCurrent",
+      label: t("academicYears.action.setCurrent"),
+      icon: Star,
+      permission: "academic-years.update",
+      hidden: (y) => y.isCurrent,
+      onSelect: handleSetCurrent,
+    },
+    {
+      key: "update",
+      label: t("common.edit"),
+      icon: Pencil,
+      permission: "academic-years.update",
+      onSelect: openEdit,
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: Trash2,
+      tone: "danger",
+      permission: "academic-years.delete",
+      disabled: (y) => y.isCurrent,
+      onSelect: setDeleting,
+    },
+  ];
+  const actionsColumn = useRowActionsColumn<AcademicYear>({
+    actions: rowActions,
+    header: "",
+  });
+
   const columns: Column<AcademicYear>[] = [
     {
       key: "name",
@@ -135,43 +165,7 @@ export default function AcademicYearsPage() {
           <Badge tone="neutral">{t("academicYears.status.inactive")}</Badge>
         ),
     },
-    ...(canManage
-      ? [
-          {
-            key: "actions",
-            header: "",
-            align: "right" as const,
-            render: (y: AcademicYear) => (
-              <div className="flex items-center justify-end gap-1">
-                {!y.isCurrent && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleSetCurrent(y)}
-                    aria-label={t("academicYears.action.setCurrent")}
-                    title={t("academicYears.action.setCurrent")}
-                  >
-                    <Star className="h-4 w-4" />
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => openEdit(y)} aria-label={t("common.edit")}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDeleting(y)}
-                  aria-label={t("common.delete")}
-                  className="text-negative"
-                  disabled={y.isCurrent}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    ...actionsColumn,
   ];
 
   return (
@@ -180,12 +174,12 @@ export default function AcademicYearsPage() {
         title={t("academicYears.title")}
         subtitle={t("academicYears.listSubtitle")}
         action={
-          canManage && (
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              {t("academicYears.new.button")}
-            </Button>
-          )
+          <Can permission="academic-years.create">
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                {t("academicYears.new.button")}
+              </Button>
+          </Can>
         }
       />
 

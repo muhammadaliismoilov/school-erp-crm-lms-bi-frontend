@@ -28,7 +28,6 @@ import {
   type GradeRequestKind,
   type GradeRequestStatus,
 } from "@/lib/api/grade-requests";
-import { useAuthStore } from "@/lib/auth/store";
 import { formatDateDMY } from "@/lib/format";
 import { Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,7 @@ import { Spinner } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { GradeRequestFormModal } from "@/components/academic/grade-request-form-modal";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 const KIND_TABS: { value: GradeRequestKind; label: string }[] = [
   { value: "assessment", label: "Baholash" },
@@ -62,8 +62,7 @@ const STATUS_TONE: Record<GradeRequestStatus, "positive" | "caution" | "negative
 };
 
 export default function GradeRequestsPage() {
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("lms.manage");
+  const { canCreate, canUpdate, canDelete, canMutate } = useCrudPermissions("grade-requests");
 
   const [kind, setKind] = useState<GradeRequestKind>("assessment");
   const [page, setPage] = useState(1);
@@ -205,7 +204,7 @@ export default function GradeRequestsPage() {
           <span className="tnum text-ink">{total}</span> ta so‘rov
         </span>
 
-        {canManage && (
+        {canCreate && (
           <Button size="sm" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" /> So‘rov yaratish
           </Button>
@@ -278,7 +277,7 @@ export default function GradeRequestsPage() {
                     <Badge tone={STATUS_TONE[r.status]}>{GRADE_REQUEST_STATUS_LABELS[r.status]}</Badge>
                   </td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    {canManage && (
+                    {canMutate && (
                       <div className="relative inline-block">
                         <button
                           onClick={() => setMenuFor(menuFor === r.id ? null : r.id)}
@@ -289,7 +288,7 @@ export default function GradeRequestsPage() {
                         </button>
                         {menuFor === r.id && (
                           <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
-                            {r.status === "pending" && (
+                            {r.status === "pending" && canUpdate && (
                               <>
                                 <button
                                   onClick={() => {
@@ -320,15 +319,17 @@ export default function GradeRequestsPage() {
                                 </button>
                               </>
                             )}
-                            <button
-                              onClick={() => {
-                                setDeleting(r);
-                                setMenuFor(null);
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
-                            >
-                              <Trash2 className="h-4 w-4" /> O‘chirish
-                            </button>
+                            {canDelete && (
+                              <button
+                                onClick={() => {
+                                  setDeleting(r);
+                                  setMenuFor(null);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
+                              >
+                                <Trash2 className="h-4 w-4" /> O‘chirish
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

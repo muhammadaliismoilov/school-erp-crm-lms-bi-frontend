@@ -37,8 +37,11 @@ export interface QuarterInput {
 
 const api = {
   list(academicYearId?: string): Promise<QuarterListResult> {
-    const qs = academicYearId ? `?academicYearId=${encodeURIComponent(academicYearId)}` : "";
-    return apiRequest<QuarterListResult>(`/academic/quarters${qs}`);
+    // Query `query` opsiyasi orqali — qolgan modullar bilan bir xil (qo'lda
+    // yozilgan `?...` yo'lni statik tahlildan yashirib qo'yardi).
+    return apiRequest<QuarterListResult>("/academic/quarters", {
+      query: { academicYearId },
+    });
   },
   create(input: QuarterInput): Promise<Quarter> {
     return apiRequest<Quarter>("/academic/quarters", { method: "POST", body: input });

@@ -32,6 +32,7 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
+import { Can } from "@/components/auth/can";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Barcha statuslar" },
@@ -210,24 +211,26 @@ export default function UpdateRequestsPage() {
                           <Eye className="h-4 w-4" />
                         </button>
                         {r.status === "pending" && (
-                          <>
-                            <Button
-                              variant="accent"
-                              size="sm"
-                              onClick={() => setReviewing({ req: r, action: "approved" })}
-                            >
-                              <Check className="mr-1 h-3.5 w-3.5" />
-                              Tasdiqlash
-                            </Button>
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => setReviewing({ req: r, action: "rejected" })}
-                            >
-                              <X className="mr-1 h-3.5 w-3.5" />
-                              Rad etish
-                            </Button>
-                          </>
+                          <Can permission="transaction-change-requests.update">
+                            <>
+                              <Button
+                                variant="accent"
+                                size="sm"
+                                onClick={() => setReviewing({ req: r, action: "approved" })}
+                              >
+                                <Check className="mr-1 h-3.5 w-3.5" />
+                                Tasdiqlash
+                              </Button>
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => setReviewing({ req: r, action: "rejected" })}
+                              >
+                                <X className="mr-1 h-3.5 w-3.5" />
+                                Rad etish
+                              </Button>
+                            </>
+                          </Can>
                         )}
                       </div>
                     </td>

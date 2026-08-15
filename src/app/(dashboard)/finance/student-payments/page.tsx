@@ -34,6 +34,7 @@ import {
   type StudentPaymentStatus,
 } from "@/lib/api/student-payments";
 import { useAuthStore } from "@/lib/auth/store";
+import { useCan } from "@/lib/auth/use-can";
 import { formatDateDMY } from "@/lib/format";
 import { formatMoney } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -65,14 +66,16 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 export default function StudentPaymentsPage() {
   const router = useRouter();
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   const currentUser = useAuthStore((s) => s.user);
-  const canManage = can("finance.manage");
+  const canCreate = can("student-payments.create");
+  const canUpdate = can("student-payments.update");
+  const canDelete = can("student-payments.delete");
   const isSuperAdmin = can("*.*");
-  // Yozuvni faqat egasi yoki super-admin o'zgartira/o'chira oladi; egasi
-  // noma'lum eski yozuvlarda (createdBy=null) — finance.manage yetarli (back-compat).
-  const canModify = (createdBy: string | null) =>
-    canManage && (createdBy == null || createdBy === currentUser?.id || isSuperAdmin);
+  // Yozuvni faqat egasi yoki super-admin o'zgartira/o'chira oladi; egasi noma'lum
+  // eski yozuvlarda (createdBy=null) — huquqning o'zi yetarli (back-compat).
+  const ownsRow = (createdBy: string | null) =>
+    createdBy == null || createdBy === currentUser?.id || isSuperAdmin;
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -225,7 +228,7 @@ export default function StudentPaymentsPage() {
         <Button variant="secondary" size="sm" disabled={exporting || total === 0} onClick={handleExport}>
           <Download className="h-4 w-4" /> {exporting ? "Tayyorlanmoqda…" : "Excelga eksport"}
         </Button>
-        {canManage && (
+        {canCreate && (
           <Button size="sm" onClick={() => router.push("/finance/student-payments/create")}>
             <Plus className="h-4 w-4" /> To‘lov qo‘shish
           </Button>
@@ -353,23 +356,23 @@ export default function StudentPaymentsPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        {canModify(r.createdBy) && (
-                          <>
-                            <button
-                              className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
-                              title="Tahrirlash"
-                              onClick={() => router.push(`/finance/student-payments/create?id=${r.id}`)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                              title="O‘chirish"
-                              onClick={() => setDeleting(r)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </>
+                        {canUpdate && ownsRow(r.createdBy) && (
+                          <button
+                            className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
+                            title="Tahrirlash"
+                            onClick={() => router.push(`/finance/student-payments/create?id=${r.id}`)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        )}
+                        {canDelete && ownsRow(r.createdBy) && (
+                          <button
+                            className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
+                            title="O‘chirish"
+                            onClick={() => setDeleting(r)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         )}
                       </div>
                     </td>

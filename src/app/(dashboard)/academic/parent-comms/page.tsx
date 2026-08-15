@@ -25,7 +25,6 @@ import {
   type ParentComm,
 } from "@/lib/api/parent-comms";
 import { useClassList } from "@/lib/api/classes";
-import { useAuthStore } from "@/lib/auth/store";
 import { formatDateTimeDMY } from "@/lib/format";
 import { Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +34,7 @@ import { Spinner } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { ParentCommFormModal } from "@/components/academic/parent-comm-form-modal";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 const SENTIMENT_TABS: { value: "" | CommSentiment; label: string }[] = [
   { value: "", label: "Hammasi" },
@@ -59,8 +59,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 2019 }, (_, i) => CURRENT_YEAR - i);
 
 export default function ParentCommsPage() {
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("students.manage");
+  const { canCreate, canUpdate, canDelete, canMutate } = useCrudPermissions("parent-communications");
 
   const [sentiment, setSentiment] = useState<"" | CommSentiment>("");
   const [classId, setClassId] = useState("");
@@ -205,7 +204,7 @@ export default function ParentCommsPage() {
           </Button>
         )}
 
-        {canManage && (
+        {canCreate && (
           <Button size="sm" className="ml-auto" onClick={() => setCreating(true)}>
             <Plus className="h-4 w-4" /> Muloqot qo‘shish
           </Button>
@@ -287,7 +286,7 @@ export default function ParentCommsPage() {
                   </td>
                   <td className="px-4 py-3 tnum text-ink-soft">{formatDateTimeDMY(r.communicationDate)}</td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    {canManage && (
+                    {canMutate && (
                       <div className="relative inline-block">
                         <button
                           onClick={() => setMenuFor(menuFor === r.id ? null : r.id)}
@@ -298,24 +297,28 @@ export default function ParentCommsPage() {
                         </button>
                         {menuFor === r.id && (
                           <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
-                            <button
-                              onClick={() => {
-                                setEditing(r);
-                                setMenuFor(null);
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
-                            >
-                              <Pencil className="h-4 w-4" /> Tahrirlash
-                            </button>
-                            <button
-                              onClick={() => {
-                                setDeleting(r);
-                                setMenuFor(null);
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
-                            >
-                              <Trash2 className="h-4 w-4" /> O‘chirish
-                            </button>
+                            {canUpdate && (
+                              <button
+                                onClick={() => {
+                                  setEditing(r);
+                                  setMenuFor(null);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                              >
+                                <Pencil className="h-4 w-4" /> Tahrirlash
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => {
+                                  setDeleting(r);
+                                  setMenuFor(null);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
+                              >
+                                <Trash2 className="h-4 w-4" /> O‘chirish
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

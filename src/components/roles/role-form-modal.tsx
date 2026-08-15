@@ -7,6 +7,7 @@ import {
   useCreateRole,
   useUpdateRole,
   type CatalogCategory,
+  type DataScope,
   type LocalizedLabel,
   type PermissionCatalog,
   type Role,
@@ -120,6 +121,7 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
   const catalog = catalogQuery.data;
 
   const [name, setName] = useState("");
+  const [dataScope, setDataScope] = useState<DataScope>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -128,6 +130,7 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
   useEffect(() => {
     if (open) {
       setName(role ? role.displayName : "");
+      setDataScope(role?.dataScope ?? "all");
       setSelected(new Set(role ? role.permissions.map((p) => p.code) : []));
       setExpanded(new Set(catalog?.categories[0] ? [catalog.categories[0].key] : []));
       setSearch("");
@@ -186,7 +189,7 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
     const display = name.trim();
     try {
       if (role) {
-        const payload: Partial<RoleInput> = { permissionCodes };
+        const payload: Partial<RoleInput> = { permissionCodes, dataScope };
         // System role names are locked; only the display title/permissions change.
         if (!role.isSystem && display !== role.displayName) {
           payload.name = slugifyRoleName(display);
@@ -200,6 +203,7 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
           name: slugifyRoleName(display),
           title: { uz: display },
           permissionCodes,
+          dataScope,
         };
         await create.mutateAsync(payload);
       }
@@ -244,10 +248,39 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
           {role?.isSystem && <p className="text-xs text-ink-muted">{t("roles.systemNameLocked")}</p>}
         </section>
 
-        {/* 2. Imtiyozlar */}
+        {/* 2. Ma'lumot doirasi */}
+        <section className="space-y-2">
+          <h4 className="label">2. {t("roles.f.dataScope")}</h4>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(["all", "own"] as const).map((scope) => (
+              <button
+                key={scope}
+                type="button"
+                onClick={() => setDataScope(scope)}
+                aria-pressed={dataScope === scope}
+                className={cn(
+                  "rounded-lg border px-3.5 py-2.5 text-left transition-colors",
+                  dataScope === scope
+                    ? "border-accent bg-accent/8"
+                    : "border-line hover:border-ink-muted",
+                )}
+              >
+                <span className="block text-sm font-medium text-ink">
+                  {t(`roles.scope.${scope}`)}
+                </span>
+                <span className="mt-0.5 block text-xs text-ink-muted">
+                  {t(`roles.scope.${scope}.hint`)}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-ink-muted">{t("roles.scope.note")}</p>
+        </section>
+
+        {/* 3. Imtiyozlar */}
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <h4 className="label">2. {t("roles.f.permissions")}</h4>
+            <h4 className="label">3. {t("roles.f.permissions")}</h4>
             <span className="rounded-full bg-accent/12 px-2.5 py-0.5 text-xs font-medium text-accent tnum">
               {selected.size} / {totalPermissions}
             </span>

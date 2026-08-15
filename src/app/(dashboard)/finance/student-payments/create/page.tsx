@@ -15,7 +15,6 @@ import {
 } from "@/lib/api/student-payments";
 import { useClassList } from "@/lib/api/classes";
 import { useStudents } from "@/lib/api/students";
-import { useAuthStore } from "@/lib/auth/store";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -23,6 +22,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
 import { AgreementPanel } from "@/components/finance/agreement-panel";
+import { useCan } from "@/lib/auth/use-can";
 
 const MONTH_OPTIONS = MONTH_LABELS.map((m, i) => ({ value: String(i + 1), label: m }));
 
@@ -68,8 +68,9 @@ function StudentPaymentForm() {
   const editId = params.get("id");
   const isEdit = !!editId;
 
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("finance.manage");
+  const can = useCan();
+  // Yaratish va tahrirlash — alohida huquqlar; forma qaysi rejimda ochilganiga qarab.
+  const canManage = can(isEdit ? "student-payments.update" : "student-payments.create");
 
   const { data: options } = useStudentPaymentOptions();
   const { data: classesData } = useClassList();

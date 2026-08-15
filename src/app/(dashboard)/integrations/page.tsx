@@ -6,7 +6,6 @@ import {
   useIntegrations,
   type Integration,
 } from "@/lib/api/integrations";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { IntegrationConfigModal } from "@/components/integrations/integration-config-modal";
 import { cn, formatMoney } from "@/lib/utils";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 const PAGE_SIZE = 30;
 
@@ -49,8 +49,8 @@ function StatCard({
 
 export default function IntegrationsPage() {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("integrations.manage");
+  // "Sozlash" — integratsiyani yangilash (PATCH), ya'ni `integrations.update`.
+  const { canUpdate } = useCrudPermissions("integrations");
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -100,20 +100,24 @@ export default function IntegrationsPage() {
           </Badge>
         ),
       },
-      {
-        key: "actions",
-        header: "",
-        align: "right",
-        render: (it) =>
-          canManage ? (
-            <Button variant="secondary" size="sm" onClick={() => setConfiguring(it)}>
-              <Settings2 className="h-4 w-4" />
-              {t("integrations.action.configure")}
-            </Button>
-          ) : null,
-      },
+      // Ruxsat bo'lmasa ustun umuman qo'shilmaydi — bo'sh "Amallar" qolmaydi.
+      ...(canUpdate
+        ? [
+            {
+              key: "actions",
+              header: "",
+              align: "right" as const,
+              render: (it: Integration) => (
+                <Button variant="secondary" size="sm" onClick={() => setConfiguring(it)}>
+                  <Settings2 className="h-4 w-4" />
+                  {t("integrations.action.configure")}
+                </Button>
+              ),
+            },
+          ]
+        : []),
     ],
-    [t, canManage],
+    [t, canUpdate],
   );
 
   return (

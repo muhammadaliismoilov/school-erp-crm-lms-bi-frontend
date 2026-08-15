@@ -4,12 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, KeyRound, Loader2, X } from "lucide-react";
 import {
   USER_GENDERS,
+  useAssignRoles,
   useCreateUser,
+  useResetPassword,
   useUpdateUser,
   type User,
   type UserGender,
   type UserInput,
+  type UserUpdateInput,
 } from "@/lib/api/users";
+import { useCan } from "@/lib/auth/use-can";
 import { useRoles } from "@/lib/api/roles";
 import { useBranchOptions, useSchoolOptions } from "@/lib/api/hr-branches";
 import {
@@ -110,8 +114,14 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
   const isEdit = Boolean(user);
   const create = useCreateUser();
   const update = useUpdateUser();
+  const assignRoles = useAssignRoles();
+  const resetPassword = useResetPassword();
   const uploadAvatar = useUploadFile();
-  const pending = create.isPending || update.isPending;
+  const can = useCan();
+  // Rol va parol — alohida huquqlar (T-02): profil tahriri ularni o'z ichiga olmaydi.
+  const canAssignRole = can("roles.assign");
+  const canResetPassword = can("users.reset-password");
+  const pending = create.isPending || update.isPending || assignRoles.isPending;
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
@@ -229,7 +239,6 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
       documentNumber: trimmed(form.documentNumber),
       gender: form.gender,
       phone: trimmed(form.phone),
-      roleNames: form.roleName ? [form.roleName] : undefined,
       pinfl: trimmed(form.pinfl),
       workplace: trimmed(form.workplace),
       profileImageUrl: form.profileImageUrl,
@@ -256,10 +265,20 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
     const payload = buildPayload();
     try {
       if (user) {
-        await update.mutateAsync({ id: user.id, input: payload });
+        await update.mutateAsync({ id: user.id, input: payload as UserUpdateInput });
+        // Rol o'zgargan bo'lsa — alohida endpoint (`roles.assign` darvozasi).
+        // Profil saqlangandan KEYIN: rol rad etilsa ham profil o'zgarishlari
+        // qoladi, xato foydalanuvchiga ko'rinadi.
+        if (canAssignRole && form.roleName && form.roleName !== roleOf(user)) {
+          await assignRoles.mutateAsync({ id: user.id, roleNames: [form.roleName] });
+        }
         onClose();
       } else {
-        const created = await create.mutateAsync(payload);
+        const created = await create.mutateAsync({
+          ...payload,
+          // Yaratishda rol — provisioningning bir qismi (backend Q2 ni tekshiradi).
+          roleNames: form.roleName ? [form.roleName] : undefined,
+        });
         // Surface the one-time auto-generated login + password, then close the form.
         setCredentials({ login: created.login, password: created.generatedPassword });
         onClose();
@@ -312,7 +331,7 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
       return;
     }
     try {
-      await update.mutateAsync({ id: user.id, input: { password: password.trim() } });
+      await resetPassword.mutateAsync({ id: user.id, password: password.trim() });
       setPassword("");
       setPasswordSaved(true);
     } catch (err) {
@@ -529,7 +548,7 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
                 onChange={(e) => set("roleName", e.target.value)}
                 options={roleOptions}
                 placeholder={t("users.f.rolePlaceholder")}
-                disabled={lockRole}
+                disabled={lockRole || (isEdit && !canAssignRole)}
               />
             </Field>
             <Field label={t("users.f.pinfl")} htmlFor="u-pinfl">
@@ -615,6 +634,7 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
           {loginError && <p className="text-xs text-negative">{loginError}</p>}
           {loginSaved && <p className="text-xs text-positive">{t("users.loginSaved")}</p>}
 
+          {canResetPassword && (
           <div className="flex items-end gap-3">
             <Field label={t("users.f.password")} htmlFor="u-password">
               <Input
@@ -633,12 +653,13 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
               type="button"
               variant="accent"
               onClick={handlePasswordSave}
-              loading={update.isPending}
+              loading={resetPassword.isPending}
               disabled={password.trim().length === 0}
             >
               {t("users.editPassword")}
             </Button>
           </div>
+          )}
           {passwordError && <p className="text-xs text-negative">{passwordError}</p>}
           {passwordSaved && <p className="text-xs text-positive">{t("users.passwordSaved")}</p>}
         </section>

@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Can } from "@/components/auth/can";
 import {
   useCreateDevice,
   useDeleteDevice,
@@ -93,9 +94,11 @@ export default function TurnstileDevicesPage() {
         title="Turniket qurilmalari"
         subtitle="FaceID turniketlarni ro‘yxatga oling va API kalitini boshqaring."
         action={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> Yangi qurilma
-          </Button>
+          <Can permission="turnstile-devices.create">
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" /> Yangi qurilma
+            </Button>
+          </Can>
         }
       />
 
@@ -117,11 +120,13 @@ export default function TurnstileDevicesPage() {
                     <div className="text-xs text-ink-muted">{device.name ?? "—"}</div>
                   </div>
                 </div>
-                <Switch
-                  checked={device.active}
-                  onCheckedChange={() => toggleActive(device)}
-                  aria-label="Faollik"
-                />
+                <Can permission="turnstile-devices.update" mode="disable">
+                  <Switch
+                    checked={device.active}
+                    onCheckedChange={() => toggleActive(device)}
+                    aria-label="Faollik"
+                  />
+                </Can>
               </div>
 
               <div className="mt-3 flex items-center gap-2">
@@ -137,12 +142,16 @@ export default function TurnstileDevicesPage() {
               </div>
 
               <div className="mt-3 flex gap-2 border-t border-line pt-3">
-                <Button variant="secondary" size="sm" onClick={() => rotate(device)} loading={rotateMutation.isPending}>
-                  <RefreshCw className="h-3.5 w-3.5" /> Kalitni yangilash
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => remove(device)} className="text-negative">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+                <Can permission="turnstile-devices.update">
+                  <Button variant="secondary" size="sm" onClick={() => rotate(device)} loading={rotateMutation.isPending}>
+                    <RefreshCw className="h-3.5 w-3.5" /> Kalitni yangilash
+                  </Button>
+                </Can>
+                <Can permission="turnstile-devices.delete">
+                  <Button variant="ghost" size="sm" onClick={() => remove(device)} className="text-negative">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </Can>
               </div>
             </div>
           ))}

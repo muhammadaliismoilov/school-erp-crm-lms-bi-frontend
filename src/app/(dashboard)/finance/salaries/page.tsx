@@ -33,6 +33,8 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
+import { Can } from "@/components/auth/can";
+import { useCan } from "@/lib/auth/use-can";
 
 type Tab = "rates" | "payroll";
 
@@ -100,6 +102,7 @@ function TabButton({
 // ─── Dars stavkalari ───────────────────────────────────────────────────────
 
 function RatesView({ onToast }: { onToast: (msg: string) => void }) {
+  const canEditRates = useCan()("finance-teacher-rates.update");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -193,7 +196,7 @@ function RatesView({ onToast }: { onToast: (msg: string) => void }) {
                       <div className="flex justify-end">
                         <RateCell
                           initial={r.ratePerLesson}
-                          disabled={upsert.isPending}
+                          disabled={upsert.isPending || !canEditRates}
                           onCommit={(value) => saveRate(r.teacherId, value)}
                         />
                       </div>
@@ -264,6 +267,9 @@ function RateCell({
 // ─── Oylik hisob-kitob ─────────────────────────────────────────────────────
 
 function PayrollView({ onToast }: { onToast: (msg: string) => void }) {
+  // Tuzatish ham, tasdiqlash ham oylikni yangilaydi.
+  const showActions = useCan()("finance-salaries.update");
+  const colCount = showActions ? 8 : 7;
   const periods = useMemo(() => recentPeriods(18), []);
   const [period, setPeriod] = useState(currentPeriod());
   const [searchInput, setSearchInput] = useState("");
@@ -338,10 +344,12 @@ function PayrollView({ onToast }: { onToast: (msg: string) => void }) {
               }}
             />
           </div>
-          <Button variant="accent" onClick={onRecalculate} loading={recalc.isPending}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Qayta hisoblash
-          </Button>
+          <Can permission="finance-salaries.update">
+            <Button variant="accent" onClick={onRecalculate} loading={recalc.isPending}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Qayta hisoblash
+            </Button>
+          </Can>
         </div>
       </div>
 
@@ -369,20 +377,22 @@ function PayrollView({ onToast }: { onToast: (msg: string) => void }) {
                 <th className="px-4 py-3 text-right font-medium">Yakuniy summa</th>
                 <th className="px-4 py-3 font-medium">Holat</th>
                 <th className="px-4 py-3 font-medium">Izoh</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={8}>
+                <StateRow colSpan={colCount}>
                   <Spinner className="mx-auto h-5 w-5" />
                 </StateRow>
               ) : isError ? (
-                <StateRow colSpan={8}>
+                <StateRow colSpan={colCount}>
                   <ErrorState onRetry={refetch} />
                 </StateRow>
               ) : rows.length === 0 ? (
-                <StateRow colSpan={8}>
+                <StateRow colSpan={colCount}>
                   <span className="text-ink-muted">O‘qituvchilar topilmadi</span>
                 </StateRow>
               ) : (
@@ -414,29 +424,31 @@ function PayrollView({ onToast }: { onToast: (msg: string) => void }) {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={approved || !r.id}
-                            onClick={() => setEditing(r)}
-                          >
-                            <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                            Tuzatish
-                          </Button>
-                          <Button
-                            variant="accent"
-                            size="sm"
-                            disabled={approved || !r.id}
-                            loading={approve.isPending && approve.variables === r.id}
-                            onClick={() => onApprove(r)}
-                          >
-                            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                            Tasdiqlash
-                          </Button>
-                        </div>
-                      </td>
+                      {showActions && (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              disabled={approved || !r.id}
+                              onClick={() => setEditing(r)}
+                            >
+                              <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                              Tuzatish
+                            </Button>
+                            <Button
+                              variant="accent"
+                              size="sm"
+                              disabled={approved || !r.id}
+                              loading={approve.isPending && approve.variables === r.id}
+                              onClick={() => onApprove(r)}
+                            >
+                              <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                              Tasdiqlash
+                            </Button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })

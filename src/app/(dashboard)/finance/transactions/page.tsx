@@ -49,6 +49,8 @@ import {
 import { useUsers } from "@/lib/api/users";
 import { useCreateChangeRequest } from "@/lib/api/transaction-change-requests";
 import { useAuthStore } from "@/lib/auth/store";
+import { useCan, useCrudPermissions } from "@/lib/auth/use-can";
+import { Can } from "@/components/auth/can";
 import { formatDateDMY } from "@/lib/format";
 import { formatMoney } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -81,14 +83,17 @@ type Tab = "list" | "stats";
 
 export default function TransactionsPage() {
   const router = useRouter();
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   const currentUser = useAuthStore((s) => s.user);
-  const canManage = can("finance.manage");
+  const { canUpdate, canDelete } = useCrudPermissions("transactions");
+  const canRequestChange = can("transaction-change-requests.create");
   const isSuperAdmin = can("*.*");
   // Yozuvni faqat egasi yoki super-admin o'zgartira/o'chira oladi; egasi
-  // noma'lum eski yozuvlarda (createdBy=null) — finance.manage yetarli (back-compat).
-  const canModify = (createdBy: string | null) =>
-    canManage && (createdBy == null || createdBy === currentUser?.id || isSuperAdmin);
+  // noma'lum eski yozuvlarda (createdBy=null) — imtiyozning o'zi yetarli (back-compat).
+  const isOwnRecord = (createdBy: string | null) =>
+    createdBy == null || createdBy === currentUser?.id || isSuperAdmin;
+  const canEditRow = (createdBy: string | null) => canUpdate && isOwnRecord(createdBy);
+  const canDeleteRow = (createdBy: string | null) => canDelete && isOwnRecord(createdBy);
 
   const [tab, setTab] = useState<Tab>("list");
   const [page, setPage] = useState(1);
@@ -340,11 +345,11 @@ export default function TransactionsPage() {
           <Button variant="secondary" size="sm" disabled={exporting || total === 0} onClick={handleExport}>
             <Download className="h-4 w-4" /> {exporting ? "Tayyorlanmoqda…" : "Excelga eksport"}
           </Button>
-          {canManage && (
+          <Can permission="transactions.create">
             <Button size="sm" onClick={() => router.push("/finance/transactions/create")}>
               <Plus className="h-4 w-4" /> Tranzaksiya qo‘shish
             </Button>
-          )}
+          </Can>
         </div>
       </div>
 
@@ -415,24 +420,27 @@ export default function TransactionsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </button>
-                          {canModify(r.createdBy) ? (
-                            <>
-                              <button
-                                className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
-                                title="Tahrirlash"
-                                onClick={() => router.push(`/finance/transactions/create?id=${r.id}`)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                                title="O‘chirish"
-                                onClick={() => setDeleting(r)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </>
-                          ) : (
+                          {canEditRow(r.createdBy) && (
+                            <button
+                              className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
+                              title="Tahrirlash"
+                              onClick={() => router.push(`/finance/transactions/create?id=${r.id}`)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          )}
+                          {canDeleteRow(r.createdBy) && (
+                            <button
+                              className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
+                              title="O‘chirish"
+                              onClick={() => setDeleting(r)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                          {/* O'zgaruvchini to'g'ridan-to'g'ri tahrirlay olmaydiganlar
+                              o'zgartirish so'rovi yuboradi (boshqa resurs). */}
+                          {!canEditRow(r.createdBy) && canRequestChange && (
                             <button
                               className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
                               title="O‘zgartirish so‘rovi"

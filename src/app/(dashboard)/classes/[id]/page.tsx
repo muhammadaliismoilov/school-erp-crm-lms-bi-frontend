@@ -13,13 +13,13 @@ import {
   Users,
 } from "lucide-react";
 import { useClass, type ClassStudentRow } from "@/lib/api/classes";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { ClassSmsModal } from "@/components/academic/class-sms-modal";
 import { ClassTransferModal } from "@/components/academic/class-transfer-modal";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 const LANGUAGE_NAME: Record<string, string> = {
   uz: "O‘zbekcha",
@@ -59,8 +59,8 @@ export default function ClassDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id ?? null;
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("academic.manage");
+  // O'quvchi ko'chirish va SMS yuborish — ikkalasi ham sinfni yangilash amali.
+  const { canUpdate } = useCrudPermissions("academic-classes");
 
   const { data, isLoading, isError, refetch } = useClass(id);
   const [smsOpen, setSmsOpen] = useState(false);
@@ -131,7 +131,7 @@ export default function ClassDetailPage() {
             </p>
           </div>
         </div>
-        {canManage && (
+        {canUpdate && (
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={() => setTransferOpen(true)}>
               <ArrowLeftRight className="h-4 w-4" />

@@ -10,12 +10,12 @@ import {
 import { useUsers } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/types";
 import { useI18n } from "@/lib/i18n/provider";
-import { useAuthStore } from "@/lib/auth/store";
 import { Badge } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select, type SelectOption } from "@/components/ui/select";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 interface AppealDetailModalProps {
   appeal: Appeal | null;
@@ -40,8 +40,9 @@ const STATUS_TONE: Record<AppealStatus, "neutral" | "positive" | "negative" | "c
 
 export function AppealDetailModal({ appeal, onClose }: AppealDetailModalProps) {
   const { t, locale } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("appeals.manage");
+  // Holat o'zgartirish (PATCH :id) va mas'ul biriktirish (PATCH :id/assign) —
+  // ikkalasi ham `appeals.update`.
+  const { canUpdate } = useCrudPermissions("appeals");
 
   const update = useUpdateAppeal();
   const assign = useAssignAppeal();
@@ -175,7 +176,7 @@ export function AppealDetailModal({ appeal, onClose }: AppealDetailModalProps) {
           </div>
         )}
 
-        {canManage && (
+        {canUpdate && (
           <div className="space-y-6 border-t border-line pt-6">
             {/* Status workflow */}
             <div className="space-y-3">

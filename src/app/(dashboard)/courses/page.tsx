@@ -17,11 +17,12 @@ import {
 } from "lucide-react";
 import { useCourseList, useDeleteCourse, type Course } from "@/lib/api/courses";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
@@ -63,8 +64,6 @@ function StatCard({
 
 export default function CoursesPage() {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("academic.manage");
 
   const [search, setSearch] = useState("");
   const [quarterNumber, setQuarterNumber] = useState<number | undefined>(undefined);
@@ -117,6 +116,42 @@ export default function CoursesPage() {
       setActionError(err instanceof ApiError ? err.localized("uz") : t("common.error"));
     }
   }
+
+  const rowActions: RowAction<Course>[] = [
+    {
+      key: "detail",
+      label: t("courses.detail.title"),
+      icon: Eye,
+      permission: "academic-courses.read",
+      onSelect: (c) => setDetailId(c.id),
+    },
+    {
+      key: "students",
+      label: t("courses.students.title"),
+      icon: UserPlus,
+      permission: "academic-courses.update",
+      onSelect: (c) => setStudentsId(c.id),
+    },
+    {
+      key: "update",
+      label: t("common.edit"),
+      icon: Pencil,
+      permission: "academic-courses.update",
+      onSelect: openEdit,
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: Trash2,
+      tone: "danger",
+      permission: "academic-courses.delete",
+      onSelect: setDeleting,
+    },
+  ];
+  const actionsColumn = useRowActionsColumn<Course>({
+    actions: rowActions,
+    header: t("courses.col.actions"),
+  });
 
   const columns: Column<Course>[] = [
     {
@@ -173,43 +208,7 @@ export default function CoursesPage() {
       header: t("courses.col.students"),
       render: (c) => <span className="text-sm text-ink-soft tnum">{c.stats.studentCount}</span>,
     },
-    {
-      key: "actions",
-      header: t("courses.col.actions"),
-      align: "right" as const,
-      render: (c) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="sm" onClick={() => setDetailId(c.id)} aria-label={t("courses.detail.title")}>
-            <Eye className="h-4 w-4" />
-          </Button>
-          {canManage && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setStudentsId(c.id)}
-                aria-label={t("courses.students.title")}
-                className="text-accent"
-              >
-                <UserPlus className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => openEdit(c)} aria-label={t("common.edit")}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setDeleting(c)}
-                aria-label={t("common.delete")}
-                className="text-negative"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-        </div>
-      ),
-    },
+    ...actionsColumn,
   ];
 
   return (
@@ -218,12 +217,12 @@ export default function CoursesPage() {
         title={t("courses.title")}
         subtitle={t("courses.listSubtitle")}
         action={
-          canManage && (
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              {t("courses.new.button")}
-            </Button>
-          )
+          <Can permission="academic-courses.create">
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                {t("courses.new.button")}
+              </Button>
+          </Can>
         }
       />
 

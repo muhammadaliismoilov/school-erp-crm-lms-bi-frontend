@@ -10,7 +10,6 @@ import {
   type Lead,
   type LeadStatus,
 } from "@/lib/api/crm";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
@@ -18,6 +17,7 @@ import { Select } from "@/components/ui/select";
 import { isoToDMY } from "@/lib/format";
 import { LeadComments } from "@/components/crm/lead-comments";
 import { LeadTagPicker } from "@/components/crm/lead-tag-picker";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 interface Props {
   open: boolean;
@@ -39,8 +39,9 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete, onEnroll }: Props) {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("crm.manage");
+  // Backend: PATCH leads/:id, .../status, PUT .../tags, POST .../enroll — hammasi
+  // `crm-leads.update`; o'chirish alohida `crm-leads.delete`.
+  const { canUpdate, canDelete } = useCrudPermissions("crm-leads");
   const { data, isLoading } = useLead(open ? leadId : null);
   const history = useLeadHistory(open ? leadId : null);
   const move = useMoveLead();
@@ -63,25 +64,29 @@ export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete, onEn
               <h3 className="font-display text-xl font-semibold text-ink">{data.fullName}</h3>
               <p className="text-sm text-ink-muted tnum">{data.phone}</p>
             </div>
-            {canManage && (
+            {(canUpdate || canDelete) && (
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" onClick={() => onEdit(data)} aria-label={t("common.edit")}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-negative"
-                  onClick={() => onDelete(data)}
-                  aria-label={t("common.delete")}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {canUpdate && (
+                  <Button variant="ghost" size="sm" onClick={() => onEdit(data)} aria-label={t("common.edit")}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-negative"
+                    onClick={() => onDelete(data)}
+                    aria-label={t("common.delete")}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
 
-          {canManage && (
+          {canUpdate && (
             <div>
               <p className="mb-1.5 text-xs uppercase tracking-wide text-ink-muted">{t("crm.lead.changeStatus")}</p>
               <Select
@@ -101,7 +106,7 @@ export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete, onEn
                 {t("crm.enroll.alreadyEnrolled")}
               </div>
             ) : (
-              canManage && (
+              canUpdate && (
                 <Button className="w-full" onClick={() => onEnroll(data)}>
                   <GraduationCap className="h-4 w-4" />
                   {t("crm.enroll.button")}
@@ -119,9 +124,9 @@ export function LeadDetailDrawer({ open, leadId, onClose, onEdit, onDelete, onEn
             </div>
           </div>
 
-          {canManage && <LeadTagPicker leadId={data.id} selected={data.tags ?? []} />}
+          {canUpdate && <LeadTagPicker leadId={data.id} selected={data.tags ?? []} />}
 
-          <LeadComments leadId={data.id} canManage={canManage} />
+          <LeadComments leadId={data.id} />
 
           <div>
             <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">

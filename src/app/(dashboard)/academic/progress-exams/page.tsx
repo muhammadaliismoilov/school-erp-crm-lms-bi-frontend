@@ -25,11 +25,12 @@ import {
   type ExamType,
 } from "@/lib/api/exams";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
@@ -84,7 +85,6 @@ function fmtDateTime(iso: string | null): string {
 
 export default function ProgressExamsPage() {
   const { t } = useI18n();
-  const canManage = useAuthStore((s) => s.can)("lms.manage");
 
   const [kind, setKind] = useState<ExamKind>("class");
 
@@ -205,6 +205,37 @@ export default function ProgressExamsPage() {
     { value: "finished", label: t("exam.status.finished") },
   ];
 
+  const rowActions: RowAction<Exam>[] = [
+    {
+      key: "publish",
+      label: t("exam.action.publish"),
+      icon: Send,
+      tone: "positive",
+      permission: "lms-exams.update",
+      hidden: (e) => e.status !== "draft",
+      onSelect: doPublish,
+    },
+    {
+      key: "update",
+      label: t("common.edit"),
+      icon: Pencil,
+      permission: "lms-exams.update",
+      onSelect: openEdit,
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: Trash2,
+      tone: "danger",
+      permission: "lms-exams.delete",
+      onSelect: setDeleting,
+    },
+  ];
+  const actionsColumn = useRowActionsColumn<Exam>({
+    actions: rowActions,
+    header: t("exam.col.actions"),
+  });
+
   const columns: Column<Exam>[] = [
     { key: "index", header: "№", render: (e) => <span className="text-ink-muted tnum">{rows.indexOf(e) + 1}</span> },
     kind === "class"
@@ -239,29 +270,7 @@ export default function ProgressExamsPage() {
       header: t("exam.col.status"),
       render: (e) => <Badge tone={STATUS_TONE[e.status]}>{t(`exam.status.${e.status}`)}</Badge>,
     },
-    {
-      key: "actions",
-      header: t("exam.col.actions"),
-      align: "right" as const,
-      render: (e) =>
-        canManage ? (
-          <div className="flex items-center justify-end gap-1">
-            {e.status === "draft" && (
-              <Button variant="ghost" size="sm" className="text-accent" onClick={() => doPublish(e)} aria-label={t("exam.action.publish")}>
-                <Send className="h-4 w-4" />
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => openEdit(e)} aria-label={t("common.edit")}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-negative" onClick={() => setDeleting(e)} aria-label={t("common.delete")}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <span className="text-ink-muted">—</span>
-        ),
-    },
+    ...actionsColumn,
   ];
 
   return (
@@ -270,12 +279,12 @@ export default function ProgressExamsPage() {
         title={t("exam.title")}
         subtitle={t("exam.subtitle")}
         action={
-          canManage && (
+          <Can permission="lms-exams.create">
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
               {t("exam.assign")}
             </Button>
-          )
+          </Can>
         }
       />
 

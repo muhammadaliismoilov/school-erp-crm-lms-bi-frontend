@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useCan } from "@/lib/auth/use-can";
 import { Camera, Copy, GraduationCap, Wand2, X } from "lucide-react";
 import {
   QUALIFICATION_CATEGORIES,
@@ -98,12 +99,12 @@ const EMPTY_TEACHER_FORM: TeacherFormState = {
   isExtraLesson: false, isClassLeader: false,
 };
 
+// "Sinf rahbari" ATAYLAB yo'q (T-05) — sabab teacher-form-drawer.tsx da.
 const ROLE_FIELDS = [
   { key: "isSubjectTeacher", label: "Fan o'qituvchisi" },
   { key: "isAssistantTeacher", label: "Yordamchi o'qituvchi" },
   { key: "isMbr", label: "MBR" },
   { key: "isExtraLesson", label: "Qo'shimcha dars" },
-  { key: "isClassLeader", label: "Sinf rahbari" },
 ] as const;
 
 export function StaffFormModal({
@@ -125,6 +126,10 @@ export function StaffFormModal({
 }) {
   const createStaff = useCreateStaff();
   const updateStaff = useUpdateStaff();
+  const can = useCan();
+  // Rol almashtirish — profil tahririga kirmaydigan alohida huquq (T-02).
+  // Yaratishda rol — provisioning qismi, u erkin; tahrirlashda `roles.assign` kerak.
+  const canAssignRole = can("roles.assign");
   const createTeacher = useCreateTeacher();
   const updateTeacher = useUpdateTeacher();
   const uploadPhoto = useUploadFile();
@@ -292,7 +297,7 @@ export function StaffFormModal({
       pinfl: form.pinfl.trim() || undefined,
       departmentId: form.departmentId,
       positionId: form.positionId,
-      roleName: form.roleName || undefined,
+      roleName: editing && !canAssignRole ? undefined : form.roleName || undefined,
       salary: form.salary ?? 0,
       status: form.status,
       qualificationCategory: form.qualificationCategory || undefined,
@@ -458,7 +463,12 @@ export function StaffFormModal({
         </Field>
 
         <Field label="Rol (login uchun)">
-          <Select value={form.roleName} onChange={(e) => set("roleName", e.target.value)} options={roleOptions} />
+          <Select
+            value={form.roleName}
+            onChange={(e) => set("roleName", e.target.value)}
+            options={roleOptions}
+            disabled={Boolean(editing) && !canAssignRole}
+          />
         </Field>
         <Field label="Status">
           <Select

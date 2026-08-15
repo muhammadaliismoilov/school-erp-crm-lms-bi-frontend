@@ -17,6 +17,8 @@ import {
 } from "@/lib/api/gradebook";
 import { Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Can } from "@/components/auth/can";
+import { useCan } from "@/lib/auth/use-can";
 import { Switch } from "@/components/ui/switch";
 import { cn, formatDate } from "@/lib/utils";
 import { CellEditor } from "@/components/academic/journal/cell-editor";
@@ -38,6 +40,10 @@ export default function JournalPage() {
   const [quarterTarget, setQuarterTarget] = useState<GradebookStudent | null>(null);
   const [detailStudent, setDetailStudent] = useState<GradebookStudent | null>(null);
 
+
+  const can = useCan();
+  // Katakni tahrirlash/choraklik baho — gradebook yozuvini yangilaydi.
+  const canEditGrades = can("lms-gradebook.update");
   const classes = useClasses();
   const subjects = useSubjects();
   const quarters = useQuarters();
@@ -87,9 +93,11 @@ export default function JournalPage() {
             <p className="mt-0.5 text-sm text-ink-muted">Baho, ball, davomat va choraklik bahoni boshqaring</p>
           </div>
         </div>
-        <Button variant="accent" onClick={runGenerate} loading={generate.isPending} disabled={!ready}>
-          <Sparkles className="h-4 w-4" /> Darslarni generatsiya qilish
-        </Button>
+        <Can permission="lms-journal.create">
+          <Button variant="accent" onClick={runGenerate} loading={generate.isPending} disabled={!ready}>
+            <Sparkles className="h-4 w-4" /> Darslarni generatsiya qilish
+          </Button>
+        </Can>
       </div>
 
       {/* Tabs */}
@@ -160,9 +168,20 @@ export default function JournalPage() {
             <span className="text-sm text-ink-soft">Davomat ko‘rinishi</span>
           </div>
           {showAttendance ? (
-            <AttendanceGrid data={data} onCell={(lesson, student, cell) => setEditorTarget({ lesson, student, cell })} />
+            <AttendanceGrid
+              data={data}
+              onCell={
+                canEditGrades
+                  ? (lesson, student, cell) => setEditorTarget({ lesson, student, cell })
+                  : undefined
+              }
+            />
           ) : (
-            <SummaryTable data={data} onQuarter={setQuarterTarget} onDetail={setDetailStudent} />
+            <SummaryTable
+              data={data}
+              onQuarter={canEditGrades ? setQuarterTarget : undefined}
+              onDetail={setDetailStudent}
+            />
           )}
         </>
       ) : null}
@@ -206,7 +225,16 @@ export default function JournalPage() {
   );
 }
 
-function SummaryTable({ data, onQuarter, onDetail }: { data: Gradebook; onQuarter: (s: GradebookStudent) => void; onDetail: (s: GradebookStudent) => void }) {
+function SummaryTable({
+  data,
+  onQuarter,
+  onDetail,
+}: {
+  data: Gradebook;
+  /** Berilmasa — choraklik baho faqat ko'rsatiladi (tahrirlash ruxsati yo'q). */
+  onQuarter?: (s: GradebookStudent) => void;
+  onDetail: (s: GradebookStudent) => void;
+}) {
   if (data.students.length === 0) return <EmptyState title="O‘quvchilar yo‘q" subtitle="Bu sinfda faol o‘quvchilar topilmadi" />;
   return (
     <div className="card overflow-hidden">
@@ -230,9 +258,11 @@ function SummaryTable({ data, onQuarter, onDetail }: { data: Gradebook; onQuarte
               <td className="px-4 py-2.5 text-center">
                 <button
                   type="button"
-                  onClick={() => onQuarter(s)}
+                  disabled={!onQuarter}
+                  onClick={() => onQuarter?.(s)}
                   className={cn(
                     "inline-flex h-9 min-w-[40px] items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors",
+                    "disabled:cursor-default",
                     s.quarterGrade != null ? "border-accent/40 bg-accent/10 text-ink" : "border-dashed border-line text-ink-muted hover:bg-parchment",
                   )}
                 >
@@ -253,7 +283,18 @@ function SummaryTable({ data, onQuarter, onDetail }: { data: Gradebook; onQuarte
   );
 }
 
-function AttendanceGrid({ data, onCell }: { data: Gradebook; onCell: (lesson: { id: string; lessonDate: string }, student: GradebookStudent, cell?: GradebookCell) => void }) {
+function AttendanceGrid({
+  data,
+  onCell,
+}: {
+  data: Gradebook;
+  /** Berilmasa — kataklar faqat o'qish uchun. */
+  onCell?: (
+    lesson: { id: string; lessonDate: string },
+    student: GradebookStudent,
+    cell?: GradebookCell,
+  ) => void;
+}) {
   const cellMap = useMemo(() => {
     const m = new Map<string, GradebookCell>();
     for (const c of data.cells) m.set(`${c.lessonId}:${c.studentId}`, c);
@@ -292,8 +333,9 @@ function AttendanceGrid({ data, onCell }: { data: Gradebook; onCell: (lesson: { 
                   <td key={l.id} className="px-1 py-1.5 text-center">
                     <button
                       type="button"
-                      onClick={() => onCell({ id: l.id, lessonDate: l.lessonDate }, s, cell)}
-                      className="group relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-line hover:border-accent"
+                      disabled={!onCell}
+                      onClick={() => onCell?.({ id: l.id, lessonDate: l.lessonDate }, s, cell)}
+                      className="group relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-line hover:border-accent disabled:cursor-default disabled:hover:border-line"
                       title={cell?.comment ?? undefined}
                     >
                       {cell?.grade != null ? (

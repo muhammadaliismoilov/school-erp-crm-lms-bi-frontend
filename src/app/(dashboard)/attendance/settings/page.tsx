@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/card";
 import { NumberInput } from "@/components/ui/number-input";
 import { PageHeader } from "@/components/ui/page-header";
 import { Switch } from "@/components/ui/switch";
+import { Can } from "@/components/auth/can";
 import { TimeInput } from "@/components/ui/time-input";
 import {
   useAttendanceSettings,
@@ -114,9 +115,11 @@ export default function AttendanceSettingsPage() {
         title="Davomat sozlamalari"
         subtitle="Kechikish chegarasi, tuzatish oynasi va notifikatsiya qoidalari."
         action={
-          <Button onClick={save} loading={update.isPending} disabled={settings.isLoading}>
-            <Save className="h-4 w-4" /> Saqlash
-          </Button>
+          <Can permission="attendance-settings.update" mode="disable">
+            <Button onClick={save} loading={update.isPending} disabled={settings.isLoading}>
+              <Save className="h-4 w-4" /> Saqlash
+            </Button>
+          </Can>
         }
       />
 

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
   useDeleteUser,
+  useResetPassword,
   useUpdateUser,
   useUsers,
   type User,
@@ -32,7 +33,6 @@ import {
   useUnlinkChild,
 } from "@/lib/api/parents";
 import { useClassList } from "@/lib/api/classes";
-import { useAuthStore } from "@/lib/auth/store";
 import { Badge, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ import { StatCard } from "@/components/students/stat-card";
 import { StudentAvatar } from "@/components/students/student-avatar";
 import { UserFormModal } from "@/components/users/user-form-modal";
 import { CredentialsModal } from "@/components/users/credentials-modal";
+import { useCan } from "@/lib/auth/use-can";
 
 const GENDER_TABS: { value: "" | UserGender; label: string }[] = [
   { value: "", label: "Barchasi" },
@@ -56,13 +57,14 @@ const PAGE_SIZE = 20;
 
 export default function ParentsPage() {
   const router = useRouter();
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   // Gate each action on the permission its backend endpoint actually requires
-  // (there is no "users.manage" permission — that left the menu hidden for
+  // (there is no broad "users" write permission — that left the menu hidden for
   // every non-superadmin role).
   const canCreate = can("users.create");
   const canUpdate = can("users.update");
-  const canUnlink = can("students.manage");
+  // Ajratish → DELETE students/:id/parents/:parentId → `student-parents.delete`.
+  const canUnlink = can("student-parents.delete");
   const canManage = canUpdate || canUnlink;
 
   const [page, setPage] = useState(1);
@@ -103,6 +105,7 @@ export default function ParentsPage() {
 
   const deleteUser = useDeleteUser();
   const updateUser = useUpdateUser();
+  const resetPasswordMut = useResetPassword();
   const unlinkChild = useUnlinkChild();
 
   const rows = useMemo(() => data?.items ?? [], [data]);
@@ -131,7 +134,8 @@ export default function ParentsPage() {
   async function confirmReset() {
     if (!resetFor) return;
     const password = generatePassword();
-    await updateUser.mutateAsync({ id: resetFor.id, input: { password } });
+    // Parol tiklash — alohida endpoint (users.reset-password), T-02.
+    await resetPasswordMut.mutateAsync({ id: resetFor.id, password });
     // Surface the new password once via the credentials dialog.
     setNewCreds({ login: resetFor.login, password });
     setResetFor(null);

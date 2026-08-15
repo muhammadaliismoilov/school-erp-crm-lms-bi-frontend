@@ -31,6 +31,12 @@ import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Drawer } from "@/components/ui/drawer";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  RowActions,
+  useAnyRowAction,
+  type RowAction,
+} from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 
 export default function DepartmentsPage() {
   const [searchInput, setSearchInput] = useState("");
@@ -87,16 +93,38 @@ export default function DepartmentsPage() {
     }
   }
 
+  const rowActions: RowAction<Department>[] = [
+    {
+      key: "update",
+      label: "Tahrirlash",
+      icon: Pencil,
+      permission: "hr-departments.update",
+      onSelect: (d) => openEdit(d),
+    },
+    {
+      key: "delete",
+      label: "O‘chirish",
+      icon: Trash2,
+      tone: "danger",
+      permission: "hr-departments.delete",
+      onSelect: (d) => setDeleting(d),
+    },
+  ];
+  const showActions = useAnyRowAction(rowActions);
+  const colCount = showActions ? 5 : 4;
+
   return (
     <div className="stagger">
       <PageHeader
         title="Bo‘limlar"
         subtitle="Tavsif"
         action={
-          <Button variant="accent" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Bo‘lim qo‘shish
-          </Button>
+          <Can permission="hr-departments.create">
+            <Button variant="accent" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Bo‘lim qo‘shish
+            </Button>
+          </Can>
         }
       />
 
@@ -121,16 +149,18 @@ export default function DepartmentsPage() {
                 <th className="px-4 py-3 font-medium">Nomi</th>
                 <th className="px-4 py-3 font-medium">Filial</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={5}>
+                <StateRow colSpan={colCount}>
                   <Spinner className="mx-auto h-5 w-5" />
                 </StateRow>
               ) : isError ? (
-                <StateRow colSpan={5}>
+                <StateRow colSpan={colCount}>
                   <div className="flex flex-col items-center gap-2 text-ink-muted">
                     <span className="text-negative">Ma‘lumotni yuklashda xatolik</span>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>
@@ -139,7 +169,7 @@ export default function DepartmentsPage() {
                   </div>
                 </StateRow>
               ) : rows.length === 0 ? (
-                <StateRow colSpan={5}>
+                <StateRow colSpan={colCount}>
                   <span className="text-ink-muted">Ma‘lumot yo‘q</span>
                 </StateRow>
               ) : (
@@ -158,24 +188,11 @@ export default function DepartmentsPage() {
                         {DEPARTMENT_STATUS_LABELS[d.status]}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Tahrirlash"
-                          onClick={() => openEdit(d)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          title="O‘chirish"
-                          onClick={() => setDeleting(d)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3">
+                        <RowActions row={d} actions={rowActions} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

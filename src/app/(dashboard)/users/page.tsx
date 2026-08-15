@@ -10,7 +10,6 @@ import {
   type UserRole,
 } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Select } from "@/components/ui/select";
 import { UserFormModal } from "@/components/users/user-form-modal";
 import { cn, formatDate, formatMoney } from "@/lib/utils";
+import { useCan } from "@/lib/auth/use-can";
 
 const PAGE_SIZE = 30;
 
@@ -79,7 +79,7 @@ function StatCard({
 
 export default function UsersPage() {
   const { t, locale } = useI18n();
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   const canCreate = can("users.create");
   const canUpdate = can("users.update");
   const canManage = canCreate || canUpdate;

@@ -10,7 +10,8 @@ interface Props {
   stats?: LeadStats;
   onOpen: (lead: Lead) => void;
   onMove: (id: string, status: LeadStatus) => void;
-  canManage: boolean;
+  /** Ustunlar orasida sudrash = lidni yangilash (`crm-leads.update`). */
+  canMove: boolean;
 }
 
 const STATUS_DOT: Record<LeadStatus, string> = {
@@ -22,7 +23,7 @@ const STATUS_DOT: Record<LeadStatus, string> = {
   rejected: "bg-negative",
 };
 
-export function LeadKanban({ leads, stats, onOpen, onMove, canManage }: Props) {
+export function LeadKanban({ leads, stats, onOpen, onMove, canMove }: Props) {
   const { t } = useI18n();
   const groups = groupLeadsByStatus(leads);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -43,7 +44,7 @@ export function LeadKanban({ leads, stats, onOpen, onMove, canManage }: Props) {
         <div
           key={status}
           onDragOver={(e) => {
-            if (!canManage) return;
+            if (!canMove) return;
             e.preventDefault();
             setOverStatus(status);
           }}
@@ -68,7 +69,7 @@ export function LeadKanban({ leads, stats, onOpen, onMove, canManage }: Props) {
               <button
                 key={lead.id}
                 type="button"
-                draggable={canManage}
+                draggable={canMove}
                 onDragStart={() => setDragId(lead.id)}
                 onDragEnd={() => {
                   setDragId(null);
@@ -77,7 +78,7 @@ export function LeadKanban({ leads, stats, onOpen, onMove, canManage }: Props) {
                 onClick={() => onOpen(lead)}
                 className={cn(
                   "rounded-lg border border-line bg-surface p-3 text-left transition-shadow hover:shadow-card",
-                  canManage && "cursor-grab active:cursor-grabbing",
+                  canMove && "cursor-grab active:cursor-grabbing",
                   dragId === lead.id && "opacity-50",
                 )}
               >

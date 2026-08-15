@@ -22,7 +22,6 @@ import {
   useDeletePaymentType,
   type PaymentType,
 } from "@/lib/api/payment-types";
-import { useAuthStore } from "@/lib/auth/store";
 import { formatDateTimeDMY } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,12 +30,16 @@ import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
+import { useCrudPermissions } from "@/lib/auth/use-can";
+import { Can } from "@/components/auth/can";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
 export default function PaymentTypesPage() {
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("finance.manage");
+  // Backend: transactions.controller `payment-types/*` — `transaction-payment-types.*`.
+  const { canCreate, canUpdate, canDelete, canMutate } = useCrudPermissions(
+    "transaction-payment-types",
+  );
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -118,6 +121,8 @@ export default function PaymentTypesPage() {
   }
 
   const busy = createMut.isPending || updateMut.isPending;
+  /** "Amallar" ustuni ruxsatsizda chizilmaydi — bo'sh holat colSpan'i ham qisqaradi. */
+  const colCount = canMutate ? 4 : 3;
 
   return (
     <div className="stagger">
@@ -144,11 +149,11 @@ export default function PaymentTypesPage() {
             className="pl-9"
           />
         </div>
-        {canManage && (
+        <Can permission="transaction-payment-types.create">
           <Button size="sm" onClick={openCreate}>
             <Plus className="h-4 w-4" /> To‘lov turi qo‘shish
           </Button>
-        )}
+        </Can>
       </div>
 
       {/* Jadval */}
@@ -160,19 +165,19 @@ export default function PaymentTypesPage() {
                 <th className="label px-4 py-3 text-left">№</th>
                 <th className="label px-4 py-3 text-left">Nomi</th>
                 <th className="label px-4 py-3 text-left">Yaratilgan vaqt</th>
-                <th className="label px-4 py-3 text-right">Amallar</th>
+                {canMutate && <th className="label px-4 py-3 text-right">Amallar</th>}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-16 text-center">
+                  <td colSpan={colCount} className="px-4 py-16 text-center">
                     <Spinner />
                   </td>
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-16 text-center text-ink-muted">
+                  <td colSpan={colCount} className="px-4 py-16 text-center text-ink-muted">
                     Xatolik yuz berdi.{" "}
                     <button className="text-accent underline" onClick={() => refetch()}>
                       Qayta urinish
@@ -181,7 +186,7 @@ export default function PaymentTypesPage() {
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-16 text-center text-ink-muted">
+                  <td colSpan={colCount} className="px-4 py-16 text-center text-ink-muted">
                     Ma‘lumot yo‘q
                   </td>
                 </tr>
@@ -206,10 +211,10 @@ export default function PaymentTypesPage() {
                         {formatDateTimeDMY(r.createdAt)}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        {canManage && (
-                          <>
+                    {canMutate && (
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          {canUpdate && (
                             <button
                               className="rounded-md p-1.5 text-ink-muted hover:bg-parchment-deep hover:text-ink"
                               title="Tahrirlash"
@@ -217,6 +222,8 @@ export default function PaymentTypesPage() {
                             >
                               <Pencil className="h-4 w-4" />
                             </button>
+                          )}
+                          {canDelete && (
                             <button
                               className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10 disabled:opacity-40"
                               title={r.isSystem ? "Tizim turini o‘chirib bo‘lmaydi" : "O‘chirish"}
@@ -225,10 +232,10 @@ export default function PaymentTypesPage() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -291,7 +298,7 @@ export default function PaymentTypesPage() {
             <Button variant="secondary" onClick={() => setFormOpen(false)}>
               Bekor qilish
             </Button>
-            <Button disabled={busy} onClick={submitForm}>
+            <Button disabled={busy || !(editing ? canUpdate : canCreate)} onClick={submitForm}>
               {busy ? "Saqlanmoqda…" : editing ? "Yangilash" : "Yaratish"}
             </Button>
           </div>
@@ -327,7 +334,7 @@ export default function PaymentTypesPage() {
           <Button variant="secondary" onClick={() => setDeleting(null)}>
             Bekor qilish
           </Button>
-          <Button variant="danger" disabled={deleteMut.isPending} onClick={confirmDelete}>
+          <Button variant="danger" disabled={deleteMut.isPending || !canDelete} onClick={confirmDelete}>
             O‘chirish
           </Button>
         </div>

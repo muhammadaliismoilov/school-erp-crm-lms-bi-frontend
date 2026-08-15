@@ -23,7 +23,6 @@ import {
   type Student,
 } from "@/lib/api/students";
 import { useClassList } from "@/lib/api/classes";
-import { useAuthStore } from "@/lib/auth/store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -34,6 +33,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { StudentAvatar } from "@/components/students/student-avatar";
 import { StudentFormDrawer } from "@/components/students/student-form-drawer";
+import { useCrudPermissions } from "@/lib/auth/use-can";
+import { Can } from "@/components/auth/can";
 
 const statusTone: Record<string, "positive" | "neutral" | "caution" | "negative"> = {
   active: "positive",
@@ -59,8 +60,7 @@ const GENDER_TABS: { value: "" | Gender; label: string }[] = [
 
 export default function StudentsPage() {
   const router = useRouter();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("students.manage");
+  const { canUpdate, canDelete, canMutate } = useCrudPermissions("students");
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -120,12 +120,12 @@ export default function StudentsPage() {
         title="O‘quvchilar ro‘yxati"
         subtitle="Barcha filiallar bo‘yicha o‘quvchilar"
         action={
-          canManage && (
+          <Can permission="students.create">
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
               O‘quvchi qo‘shish
             </Button>
-          )
+          </Can>
         }
       />
 
@@ -257,7 +257,7 @@ export default function StudentsPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      {canManage && (
+                      {canMutate && (
                         <div className="relative inline-block">
                           <button
                             onClick={() => setMenuFor(menuFor === s.id ? null : s.id)}
@@ -268,21 +268,25 @@ export default function StudentsPage() {
                           </button>
                           {menuFor === s.id && (
                             <div className="absolute right-0 z-20 mt-1 w-40 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
-                              <button
-                                onClick={() => openEdit(s)}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
-                              >
-                                <Pencil className="h-4 w-4" /> Tahrirlash
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setDeleting(s);
-                                  setMenuFor(null);
-                                }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
-                              >
-                                <Trash2 className="h-4 w-4" /> O‘chirish
-                              </button>
+                              {canUpdate && (
+                                <button
+                                  onClick={() => openEdit(s)}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                                >
+                                  <Pencil className="h-4 w-4" /> Tahrirlash
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  onClick={() => {
+                                    setDeleting(s);
+                                    setMenuFor(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
+                                >
+                                  <Trash2 className="h-4 w-4" /> O‘chirish
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

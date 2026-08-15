@@ -16,7 +16,6 @@ import {
 } from "@/lib/api/crm";
 import { useUsers } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +30,8 @@ import { LeadFormDrawer } from "@/components/crm/lead-form-drawer";
 import { LeadDetailDrawer } from "@/components/crm/lead-detail-drawer";
 import { LeadEnrollDrawer } from "@/components/crm/lead-enroll-drawer";
 import { formatMoney } from "@/lib/utils";
+import { useCrudPermissions } from "@/lib/auth/use-can";
+import { Can } from "@/components/auth/can";
 
 const DATE_PRESETS = ["today", "week", "days10", "month"] as const;
 type DatePreset = (typeof DATE_PRESETS)[number];
@@ -91,8 +92,8 @@ function StatCard({ icon, label, value, tone = "accent" }: {
 
 export default function LeadsPage() {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("crm.manage");
+  const { canUpdate, canDelete } = useCrudPermissions("crm-leads");
+
 
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [search, setSearch] = useState("");
@@ -253,7 +254,7 @@ export default function LeadsPage() {
           <Button variant="ghost" size="sm" onClick={() => setDetailId(l.id)} aria-label={t("crm.lead.detailTitle")}>
             <List className="h-4 w-4" />
           </Button>
-          {canManage && (
+          {canDelete && (
             <Button variant="ghost" size="sm" className="text-negative" onClick={() => setDeleting(l)} aria-label={t("common.delete")}>
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -269,12 +270,12 @@ export default function LeadsPage() {
         title={t("crm.leads.title")}
         subtitle={t("crm.leads.subtitle")}
         action={
-          canManage && (
+          <Can permission="crm-leads.create">
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
               {t("crm.lead.new")}
             </Button>
-          )
+          </Can>
         }
       />
 
@@ -349,7 +350,7 @@ export default function LeadsPage() {
         <LeadKanban
           leads={rows}
           stats={stats}
-          canManage={canManage}
+          canMove={canUpdate}
           onOpen={(l) => setDetailId(l.id)}
           onMove={(id, status) => move.mutate({ id, status })}
         />

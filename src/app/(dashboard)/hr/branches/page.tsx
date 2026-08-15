@@ -32,6 +32,12 @@ import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Drawer } from "@/components/ui/drawer";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  RowActions,
+  useAnyRowAction,
+  type RowAction,
+} from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 
 export default function BranchesPage() {
   const [searchInput, setSearchInput] = useState("");
@@ -89,6 +95,29 @@ export default function BranchesPage() {
     }
   }
 
+  const rowActions: RowAction<BranchNode>[] = [
+    {
+      key: "update",
+      label: "Tahrirlash",
+      icon: Pencil,
+      permission: "hr-branches.update",
+      onSelect: (node) => {
+        setEditing(node);
+        setDrawerOpen(true);
+      },
+    },
+    {
+      key: "delete",
+      label: "O‘chirish",
+      icon: Trash2,
+      tone: "danger",
+      permission: "hr-branches.delete",
+      onSelect: (node) => setDeleting(node),
+    },
+  ];
+  const showActions = useAnyRowAction(rowActions);
+  const colCount = showActions ? 4 : 3;
+
   // Daraxtni ko'rinadigan qatorlarga yoyamiz (expanded holatiga ko'ra).
   const visibleRows = useMemo(() => {
     const out: { node: BranchNode; depth: number; index: number }[] = [];
@@ -110,16 +139,18 @@ export default function BranchesPage() {
         title="Filiallar"
         subtitle="Tashkilot filiallarini boshqarish"
         action={
-          <Button
-            variant="accent"
-            onClick={() => {
-              setEditing(null);
-              setDrawerOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Filial qo‘shish
-          </Button>
+          <Can permission="hr-branches.create">
+            <Button
+              variant="accent"
+              onClick={() => {
+                setEditing(null);
+                setDrawerOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Filial qo‘shish
+            </Button>
+          </Can>
         }
       />
 
@@ -143,21 +174,23 @@ export default function BranchesPage() {
                 <th className="px-4 py-3 font-medium">№</th>
                 <th className="px-4 py-3 font-medium">Nomi</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={4}><Spinner className="mx-auto h-5 w-5" /></StateRow>
+                <StateRow colSpan={colCount}><Spinner className="mx-auto h-5 w-5" /></StateRow>
               ) : isError ? (
-                <StateRow colSpan={4}>
+                <StateRow colSpan={colCount}>
                   <div className="flex flex-col items-center gap-2 text-ink-muted">
                     <span className="text-negative">Ma‘lumotni yuklashda xatolik</span>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>Qayta urinish</Button>
                   </div>
                 </StateRow>
               ) : visibleRows.length === 0 ? (
-                <StateRow colSpan={4}><span className="text-ink-muted">Ma‘lumot yo‘q</span></StateRow>
+                <StateRow colSpan={colCount}><span className="text-ink-muted">Ma‘lumot yo‘q</span></StateRow>
               ) : (
                 visibleRows.map(({ node, depth, index }) => {
                   const hasChildren = (node.children?.length ?? 0) > 0;
@@ -193,27 +226,11 @@ export default function BranchesPage() {
                           {node.isActive ? "Faol" : "Faol emas"}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                            title="Tahrirlash"
-                            onClick={() => {
-                              setEditing(node);
-                              setDrawerOpen(true);
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                            title="O‘chirish"
-                            onClick={() => setDeleting(node)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
+                      {showActions && (
+                        <td className="px-4 py-3">
+                          <RowActions row={node} actions={rowActions} />
+                        </td>
+                      )}
                     </tr>
                   );
                 })

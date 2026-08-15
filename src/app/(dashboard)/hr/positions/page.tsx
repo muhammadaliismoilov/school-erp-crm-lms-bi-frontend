@@ -33,6 +33,12 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
 import { Drawer } from "@/components/ui/drawer";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  RowActions,
+  useAnyRowAction,
+  type RowAction,
+} from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 
 export default function PositionsPage() {
   const [searchInput, setSearchInput] = useState("");
@@ -80,22 +86,47 @@ export default function PositionsPage() {
     }
   }
 
+  const rowActions: RowAction<Position>[] = [
+    {
+      key: "update",
+      label: "Tahrirlash",
+      icon: Pencil,
+      permission: "hr-positions.update",
+      onSelect: (p) => {
+        setEditing(p);
+        setDrawerOpen(true);
+      },
+    },
+    {
+      key: "delete",
+      label: "O‘chirish",
+      icon: Trash2,
+      tone: "danger",
+      permission: "hr-positions.delete",
+      onSelect: (p) => setDeleting(p),
+    },
+  ];
+  const showActions = useAnyRowAction(rowActions);
+  const colCount = showActions ? 5 : 4;
+
   return (
     <div className="stagger">
       <PageHeader
         title="Lavozimlar"
         subtitle="Tashkilot lavozimlari"
         action={
-          <Button
-            variant="accent"
-            onClick={() => {
-              setEditing(null);
-              setDrawerOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Lavozim qo‘shish
-          </Button>
+          <Can permission="hr-positions.create">
+            <Button
+              variant="accent"
+              onClick={() => {
+                setEditing(null);
+                setDrawerOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Lavozim qo‘shish
+            </Button>
+          </Can>
         }
       />
 
@@ -120,21 +151,23 @@ export default function PositionsPage() {
                 <th className="px-4 py-3 font-medium">Nomi</th>
                 <th className="px-4 py-3 font-medium">Bo‘lim</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={5}><Spinner className="mx-auto h-5 w-5" /></StateRow>
+                <StateRow colSpan={colCount}><Spinner className="mx-auto h-5 w-5" /></StateRow>
               ) : isError ? (
-                <StateRow colSpan={5}>
+                <StateRow colSpan={colCount}>
                   <div className="flex flex-col items-center gap-2 text-ink-muted">
                     <span className="text-negative">Ma‘lumotni yuklashda xatolik</span>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>Qayta urinish</Button>
                   </div>
                 </StateRow>
               ) : rows.length === 0 ? (
-                <StateRow colSpan={5}><span className="text-ink-muted">Ma‘lumot yo‘q</span></StateRow>
+                <StateRow colSpan={colCount}><span className="text-ink-muted">Ma‘lumot yo‘q</span></StateRow>
               ) : (
                 rows.map((p, i) => (
                   <tr key={p.id} className="border-b border-line/60 last:border-0">
@@ -149,27 +182,11 @@ export default function PositionsPage() {
                     <td className="px-4 py-3">
                       <Badge tone={POSITION_STATUS_TONE[p.status]}>{POSITION_STATUS_LABELS[p.status]}</Badge>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Tahrirlash"
-                          onClick={() => {
-                            setEditing(p);
-                            setDrawerOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          title="O‘chirish"
-                          onClick={() => setDeleting(p)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3">
+                        <RowActions row={p} actions={rowActions} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

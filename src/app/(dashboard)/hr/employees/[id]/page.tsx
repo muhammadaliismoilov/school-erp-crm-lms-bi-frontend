@@ -62,6 +62,7 @@ import {
   useTeacherByStaff,
   type Teacher,
 } from "@/lib/api/hr-teachers";
+import { useClassLeaderList } from "@/lib/api/hr-class-leaderships";
 import { TeacherDrawer } from "@/components/hr/teacher-form-drawer";
 import { StaffFinanceTab } from "@/components/hr/staff-finance-tab";
 import { Badge, Card, Spinner } from "@/components/ui/card";
@@ -72,6 +73,7 @@ import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatDateDMY, formatDateTimeDMY } from "@/lib/format";
 import { formatMoney } from "@/lib/utils";
+import { Can } from "@/components/auth/can";
 
 // Yagona xodim profili: "O'qituvchilik" tabi faqat bog'langan Teacher yozuvi
 // bo'lsa ko'rinadi (?tab=teaching bilan chuqur havola qilinadi).
@@ -175,9 +177,11 @@ function EmployeeDetail() {
           <p>{staff.department?.name ?? "—"}</p>
         </div>
         {staff.status !== "dismissed" && (
-          <Button variant="secondary" size="sm" onClick={() => setDismissOpen(true)}>
-            <UserX className="h-4 w-4 text-negative" /> Ishdan bo‘shatish
-          </Button>
+          <Can permission="hr-staff.update">
+            <Button variant="secondary" size="sm" onClick={() => setDismissOpen(true)}>
+              <UserX className="h-4 w-4 text-negative" /> Ishdan bo‘shatish
+            </Button>
+          </Can>
         )}
       </div>
 
@@ -262,6 +266,14 @@ function TeacherInfoCard({ teacher }: { teacher: Teacher }) {
   const [removeOpen, setRemoveOpen] = useState(false);
   const deleteTeacher = useDeleteTeacher();
 
+  // "Sinf rahbari" endi HAQIQIY faol biriktiruvdan (T-05) — `teacher.isClassLeader`
+  // bayrog'i oylik dvigateliga ta'sir qilmasdan faqat yolg'on nishon ko'rsatardi.
+  const { data: activeLeaderships } = useClassLeaderList({
+    teacherId: teacher.id,
+    activeOn: new Date().toISOString().slice(0, 10),
+  });
+  const leaderClassNames = (activeLeaderships ?? []).map((a) => a.className).filter(Boolean);
+
   async function confirmRemoveRole() {
     // Faqat o'qituvchilik yozuvi o'chadi — xodim saqlanadi (tab o'zi yo'qoladi).
     await deleteTeacher.mutateAsync(teacher.id);
@@ -282,7 +294,10 @@ function TeacherInfoCard({ teacher }: { teacher: Teacher }) {
     { label: "Yordamchi o'qituvchi", on: teacher.isAssistantTeacher },
     { label: "MBR", on: teacher.isMbr },
     { label: "Qo'shimcha dars", on: teacher.isExtraLesson },
-    { label: "Sinf rahbari", on: teacher.isClassLeader },
+    {
+      label: leaderClassNames.length > 0 ? `Sinf rahbari (${leaderClassNames.join(", ")})` : "Sinf rahbari",
+      on: leaderClassNames.length > 0,
+    },
   ];
   const activeRoles = roles.filter((r) => r.on);
 
@@ -293,12 +308,16 @@ function TeacherInfoCard({ teacher }: { teacher: Teacher }) {
         <h2 className="font-display text-base font-semibold text-ink">O'qituvchi ma'lumotlari</h2>
         <Badge tone={TEACHER_STATUS_TONE[teacher.status]}>{TEACHER_STATUS_LABELS[teacher.status]}</Badge>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-4 w-4" /> Tahrirlash
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => setRemoveOpen(true)}>
-            <Trash2 className="h-4 w-4 text-negative" /> Rolni olib tashlash
-          </Button>
+          <Can permission="hr-teachers.update">
+            <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" /> Tahrirlash
+            </Button>
+          </Can>
+          <Can permission="hr-teachers.delete">
+            <Button variant="secondary" size="sm" onClick={() => setRemoveOpen(true)}>
+              <Trash2 className="h-4 w-4 text-negative" /> Rolni olib tashlash
+            </Button>
+          </Can>
         </div>
       </div>
       <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -504,9 +523,11 @@ function CertificatesTab({ staffId }: { staffId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-ink-muted">Sertifikat nomi va amal qilish muddati</p>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Sertifikat qo‘shish
-        </Button>
+        <Can permission="hr-staff-certificates.create">
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Sertifikat qo‘shish
+          </Button>
+        </Can>
       </div>
 
       {isLoading ? (
@@ -517,9 +538,11 @@ function CertificatesTab({ staffId }: { staffId: string }) {
         <div className="card grid place-items-center gap-2 py-20 text-center">
           <ShieldCheck className="h-10 w-10 text-ink-muted/50" />
           <p className="font-medium text-ink">Hozircha sertifikatlar yo‘q</p>
-          <Button className="mt-2" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> Birinchi sertifikatni qo‘shish
-          </Button>
+          <Can permission="hr-staff-certificates.create">
+            <Button className="mt-2" onClick={openCreate}>
+              <Plus className="h-4 w-4" /> Birinchi sertifikatni qo‘shish
+            </Button>
+          </Can>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -534,12 +557,16 @@ function CertificatesTab({ staffId }: { staffId: string }) {
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-ink">{c.name}</p>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <button onClick={() => openEdit(c)} className="text-ink-muted hover:text-accent" aria-label="Tahrirlash">
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => deleteCert.mutate(c.id)} className="text-ink-muted hover:text-negative" aria-label="O‘chirish">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <Can permission="hr-staff-certificates.update">
+                        <button onClick={() => openEdit(c)} className="text-ink-muted hover:text-accent" aria-label="Tahrirlash">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      </Can>
+                      <Can permission="hr-staff-certificates.delete">
+                        <button onClick={() => deleteCert.mutate(c.id)} className="text-ink-muted hover:text-negative" aria-label="O‘chirish">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Can>
                     </div>
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
@@ -678,9 +705,11 @@ function AchievementsTab({ staffId }: { staffId: string }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-ink-muted">Xodimning yutuq va mukofotlari</p>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" /> Yutuq qo‘shish
-        </Button>
+        <Can permission="hr-staff-achievements.create">
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Yutuq qo‘shish
+          </Button>
+        </Can>
       </div>
 
       {isLoading ? (
@@ -691,9 +720,11 @@ function AchievementsTab({ staffId }: { staffId: string }) {
         <div className="card grid place-items-center gap-2 py-20 text-center">
           <Trophy className="h-10 w-10 text-ink-muted/50" />
           <p className="font-medium text-ink">Hozircha yutuqlar mavjud emas</p>
-          <Button className="mt-2" onClick={openCreate}>
-            <Plus className="h-4 w-4" /> Birinchi yutuqni qo‘shish
-          </Button>
+          <Can permission="hr-staff-achievements.create">
+            <Button className="mt-2" onClick={openCreate}>
+              <Plus className="h-4 w-4" /> Birinchi yutuqni qo‘shish
+            </Button>
+          </Can>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -706,12 +737,16 @@ function AchievementsTab({ staffId }: { staffId: string }) {
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-ink">{a.title}</p>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <button onClick={() => openEdit(a)} className="text-ink-muted hover:text-accent" aria-label="Tahrirlash">
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => deleteAch.mutate(a.id)} className="text-ink-muted hover:text-negative" aria-label="O‘chirish">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <Can permission="hr-staff-achievements.update">
+                      <button onClick={() => openEdit(a)} className="text-ink-muted hover:text-accent" aria-label="Tahrirlash">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </Can>
+                    <Can permission="hr-staff-achievements.delete">
+                      <button onClick={() => deleteAch.mutate(a.id)} className="text-ink-muted hover:text-negative" aria-label="O‘chirish">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Can>
                   </div>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">

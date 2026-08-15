@@ -4,11 +4,12 @@ import { useState } from "react";
 import { KeyRound, Pencil, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useDeleteRole, useRoles, type Role } from "@/lib/api/roles";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
@@ -64,8 +65,6 @@ function StatCard({
 
 export default function RolesPage() {
   const { t, locale } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("roles.manage");
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -101,6 +100,29 @@ export default function RolesPage() {
     }
   }
 
+  const rowActions: RowAction<Role>[] = [
+    {
+      key: "update",
+      label: t("common.edit"),
+      icon: Pencil,
+      permission: "roles.update",
+      onSelect: openEdit,
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: Trash2,
+      tone: "danger",
+      permission: "roles.delete",
+      hidden: (r) => r.isSystem,
+      onSelect: setDeleting,
+    },
+  ];
+  const actionsColumn = useRowActionsColumn<Role>({
+    actions: rowActions,
+    header: "",
+  });
+
   const columns: Column<Role>[] = [
     {
       key: "name",
@@ -128,6 +150,18 @@ export default function RolesPage() {
       render: (r) => <Badge tone="accent">{formatMoney(r.permissionCount)}</Badge>,
     },
     {
+      key: "dataScope",
+      header: t("roles.col.dataScope"),
+      // Toraytirilgan rol ko'zga tashlanib tursin: aks holda "nega bu
+      // foydalanuvchi ro'yxatni bo'sh ko'ryapti?" degan savol uzoq tekshiriladi.
+      render: (r) =>
+        r.dataScope === "own" ? (
+          <Badge tone="caution">{t("roles.scope.own")}</Badge>
+        ) : (
+          <span className="text-xs text-ink-muted">{t("roles.scope.all")}</span>
+        ),
+    },
+    {
       key: "sample",
       header: t("roles.col.sample"),
       render: (r) => {
@@ -149,34 +183,7 @@ export default function RolesPage() {
         );
       },
     },
-    ...(canManage
-      ? [
-          {
-            key: "actions",
-            header: "",
-            align: "right" as const,
-            render: (r: Role) => (
-              <div className="flex items-center justify-end gap-1">
-                <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
-                  <Pencil className="h-4 w-4" />
-                  {t("common.edit")}
-                </Button>
-                {!r.isSystem && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeleting(r)}
-                    aria-label={t("common.delete")}
-                    className="text-negative"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ),
-          },
-        ]
-      : []),
+    ...actionsColumn,
   ];
 
   const stats = data?.stats;
@@ -187,12 +194,12 @@ export default function RolesPage() {
         title={t("roles.title")}
         subtitle={t("roles.listSubtitle")}
         action={
-          canManage && (
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              {t("roles.new")}
-            </Button>
-          )
+          <Can permission="roles.create">
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                {t("roles.new")}
+              </Button>
+          </Can>
         }
       />
 

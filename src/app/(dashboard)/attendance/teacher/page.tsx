@@ -7,6 +7,7 @@ import { SessionPanel } from "@/components/attendance/session-panel";
 import { Spinner } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
 import { PageHeader } from "@/components/ui/page-header";
+import { useCan } from "@/lib/auth/use-can";
 import { useAgenda, useOpenSession, type AgendaItem } from "@/lib/api/attendance-sessions";
 
 function today(): string {
@@ -29,6 +30,8 @@ export default function TeacherAttendancePage() {
   const [date, setDate] = useState(today());
   const [selection, setSelection] = useState<Selection | null>(null);
   const [openingSlot, setOpeningSlot] = useState<string | null>(null);
+  const can = useCan();
+  const canOpenSession = can("class-sessions.create");
   const [toast, setToast] = useState<string | null>(null);
 
   const agenda = useAgenda(date);
@@ -54,6 +57,12 @@ export default function TeacherAttendancePage() {
   }
 
   function handleSelect(item: AgendaItem) {
+    // Sessiya ochish — yangi yozuv yaratadi; huquqsiz foydalanuvchi faqat
+    // allaqachon ochilgan sessiyani ko'ra oladi.
+    if (!item.sessionId && !canOpenSession) {
+      setToast("Sessiya ochish uchun ruxsatingiz yo‘q");
+      return;
+    }
     if (item.sessionId) {
       setSelection({ sessionId: item.sessionId, status: item.status, header: headerOf(item) });
       return;

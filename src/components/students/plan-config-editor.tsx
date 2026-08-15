@@ -10,13 +10,13 @@ import {
   usePlanConfig,
   useUpdatePlanConfig,
 } from "@/lib/api/payment-plans";
-import { useAuthStore } from "@/lib/auth/store";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Spinner } from "@/components/ui/card";
 import { formatMoney } from "@/lib/utils";
 import { ApiError } from "@/lib/api/types";
+import { useCan } from "@/lib/auth/use-can";
 
 /** Chegirmani so'mga keltiradi (etalon yillik baza = referenceMonthlyFee × akademik oylar). */
 function resolve(base: number, rate: PlanRate): number {
@@ -39,13 +39,14 @@ function checkInvariant(referenceMonthlyFee: number, months: number, rates: Plan
 
 /**
  * To'lov rejasi chegirma sozlamalari — maktab darajasida 4 reja foizi/so'mi.
- * Invariant jonli tekshiriladi; saqlash faqat finance.manage huquqi bilan.
+ * Invariant jonli tekshiriladi; saqlash faqat `student-payment-plans.update`
+ * huquqi bilan.
  */
 export function PlanConfigEditor() {
   const { data, isLoading } = usePlanConfig();
   const update = useUpdatePlanConfig();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("finance.manage");
+  const can = useCan();
+  const canManage = can("student-payment-plans.update");
 
   const [referenceMonthlyFee, setRef] = useState(0);
   const [fallbackMonths, setFallback] = useState(10);

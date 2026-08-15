@@ -40,6 +40,12 @@ import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Drawer } from "@/components/ui/drawer";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  RowActions,
+  useAnyRowAction,
+  type RowAction,
+} from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Barchasi" },
@@ -111,22 +117,65 @@ export default function LeavesPage() {
     }
   }
 
+  const rowActions: RowAction<Leave>[] = [
+    {
+      key: "approve",
+      label: "Tasdiqlash",
+      icon: Check,
+      tone: "positive",
+      permission: "hr-leaves.update",
+      hidden: (l) => l.status !== "requested",
+      onSelect: (l) => review(l, "approved"),
+    },
+    {
+      key: "reject",
+      label: "Rad etish",
+      icon: X,
+      tone: "danger",
+      permission: "hr-leaves.update",
+      hidden: (l) => l.status !== "requested",
+      onSelect: (l) => review(l, "rejected"),
+    },
+    {
+      key: "update",
+      label: "Tahrirlash",
+      icon: Pencil,
+      permission: "hr-leaves.update",
+      onSelect: (l) => {
+        setEditing(l);
+        setDrawerOpen(true);
+      },
+    },
+    {
+      key: "delete",
+      label: "O‘chirish",
+      icon: Trash2,
+      tone: "danger",
+      permission: "hr-leaves.delete",
+      onSelect: (l) => setDeleting(l),
+    },
+  ];
+  const showActions = useAnyRowAction(rowActions);
+  const colCount = showActions ? 8 : 7;
+
   return (
     <div className="stagger">
       <PageHeader
         title="Ta‘tillar"
         subtitle="Xodimlar ta‘tillarini boshqarish"
         action={
-          <Button
-            variant="accent"
-            onClick={() => {
-              setEditing(null);
-              setDrawerOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Yaratish
-          </Button>
+          <Can permission="hr-leaves.create">
+            <Button
+              variant="accent"
+              onClick={() => {
+                setEditing(null);
+                setDrawerOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Yaratish
+            </Button>
+          </Can>
         }
       />
 
@@ -162,21 +211,23 @@ export default function LeavesPage() {
                 <th className="px-4 py-3 font-medium">Tugash sanasi</th>
                 <th className="px-4 py-3 text-right font-medium">Kunlar</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={8}><Spinner className="mx-auto h-5 w-5" /></StateRow>
+                <StateRow colSpan={colCount}><Spinner className="mx-auto h-5 w-5" /></StateRow>
               ) : isError ? (
-                <StateRow colSpan={8}>
+                <StateRow colSpan={colCount}>
                   <div className="flex flex-col items-center gap-2 text-ink-muted">
                     <span className="text-negative">Ma‘lumotni yuklashda xatolik</span>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>Qayta urinish</Button>
                   </div>
                 </StateRow>
               ) : rows.length === 0 ? (
-                <StateRow colSpan={8}><span className="text-ink-muted">Ma‘lumot yo‘q</span></StateRow>
+                <StateRow colSpan={colCount}><span className="text-ink-muted">Ma‘lumot yo‘q</span></StateRow>
               ) : (
                 rows.map((l, i) => (
                   <tr key={l.id} className="border-b border-line/60 last:border-0">
@@ -189,45 +240,11 @@ export default function LeavesPage() {
                     <td className="px-4 py-3">
                       <Badge tone={LEAVE_STATUS_TONE[l.status]}>{LEAVE_STATUS_LABELS[l.status]}</Badge>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {l.status === "requested" && (
-                          <>
-                            <button
-                              className="rounded-md p-1.5 text-emerald-600 hover:bg-emerald-500/10"
-                              title="Tasdiqlash"
-                              onClick={() => review(l, "approved")}
-                            >
-                              <Check className="h-4 w-4" />
-                            </button>
-                            <button
-                              className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                              title="Rad etish"
-                              onClick={() => review(l, "rejected")}
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Tahrirlash"
-                          onClick={() => {
-                            setEditing(l);
-                            setDrawerOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          title="O‘chirish"
-                          onClick={() => setDeleting(l)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3">
+                        <RowActions row={l} actions={rowActions} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

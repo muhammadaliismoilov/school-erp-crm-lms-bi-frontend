@@ -12,6 +12,8 @@ import {
   type SessionStatus,
 } from "@/lib/api/attendance-sessions";
 import { STATUS_LABEL, STATUS_TONE, StatusPicker } from "./status-picker";
+import { Can } from "@/components/auth/can";
+import { useCan } from "@/lib/auth/use-can";
 
 interface Edit {
   status: AttendanceStatus;
@@ -34,6 +36,7 @@ interface SessionPanelProps {
 const ORDER: AttendanceStatus[] = ["present", "late", "absent", "left_early", "excused"];
 
 export function SessionPanel({ sessionId, initialStatus, header, onNotify }: SessionPanelProps) {
+  const can = useCan();
   const roster = useSessionRoster(sessionId);
   const confirmMutation = useConfirmSession();
   const correctMutation = useCorrectAttendance();
@@ -157,6 +160,10 @@ export function SessionPanel({ sessionId, initialStatus, header, onNotify }: Ses
     );
   }
 
+  // Davomat belgilash — yozuv yaratish huquqi. Huquqsiz foydalanuvchi ro'yxatni
+  // ko'radi, ammo holatni o'zgartira olmaydi.
+  const canMark = can("session-attendance.update");
+
   return (
     <div className="card overflow-hidden">
       {/* Sarlavha */}
@@ -179,14 +186,18 @@ export function SessionPanel({ sessionId, initialStatus, header, onNotify }: Ses
         </div>
         <div className="flex items-center gap-2">
           {!confirmed && (
-            <Button variant="secondary" size="sm" onClick={markAllPresent}>
-              <CheckCircle2 className="h-4 w-4" /> Hammasi keldi
-            </Button>
+            <Can permission="session-attendance.update">
+              <Button variant="secondary" size="sm" onClick={markAllPresent}>
+                <CheckCircle2 className="h-4 w-4" /> Hammasi keldi
+              </Button>
+            </Can>
           )}
           {!confirmed ? (
-            <Button size="sm" onClick={confirm} loading={confirmMutation.isPending}>
-              Tasdiqlash{dirtyCount > 0 ? ` (${dirtyCount})` : ""}
-            </Button>
+            <Can permission="session-attendance.update">
+              <Button size="sm" onClick={confirm} loading={confirmMutation.isPending}>
+                Tasdiqlash{dirtyCount > 0 ? ` (${dirtyCount})` : ""}
+              </Button>
+            </Can>
           ) : (
             <span className="inline-flex items-center gap-1 text-xs text-ink-muted">
               {correctMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -239,6 +250,7 @@ export function SessionPanel({ sessionId, initialStatus, header, onNotify }: Ses
                     min={0}
                     max={600}
                     value={edit.minutesLate ?? 0}
+                    disabled={!canMark}
                     onChange={(e) => applyMinutes(r.studentId, Number(e.target.value))}
                     className="h-7 w-14 rounded-md border border-line bg-surface px-2 text-center text-xs tabular-nums focus-visible:focus-ring"
                   />
@@ -248,6 +260,7 @@ export function SessionPanel({ sessionId, initialStatus, header, onNotify }: Ses
 
               <StatusPicker
                 value={edit.status}
+                disabled={!canMark}
                 onChange={(status) => applyStatus(r.studentId, status)}
               />
             </li>

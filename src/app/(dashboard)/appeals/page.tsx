@@ -27,7 +27,6 @@ import {
   type AppealType,
   type TargetRole,
 } from "@/lib/api/appeals";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +37,8 @@ import { Select } from "@/components/ui/select";
 import { AppealFormModal } from "@/components/appeals/appeal-form-modal";
 import { AppealDetailModal } from "@/components/appeals/appeal-detail-modal";
 import { cn, formatMoney } from "@/lib/utils";
+import { useCan } from "@/lib/auth/use-can";
+import { Can } from "@/components/auth/can";
 
 const PAGE_SIZE = 30;
 
@@ -78,8 +79,10 @@ function StatCard({
 
 export default function AppealsPage() {
   const { t, locale } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("appeals.manage");
+  const can = useCan();
+  // Ommaviy havola — alohida resurs (`appeals-public-link`): ko'rish va qayta
+  // generatsiya huquqlari murojaatlarning o'zidan mustaqil.
+  const canReadPublicLink = can("appeals-public-link.read");
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -225,12 +228,12 @@ export default function AppealsPage() {
         title={t("appeals.title")}
         subtitle={t("appeals.listSubtitle")}
         action={
-          canManage && (
+          <Can permission="appeals.create">
             <Button onClick={() => setFormOpen(true)}>
               <Plus className="h-4 w-4" />
               {t("appeals.new")}
             </Button>
-          )
+          </Can>
         }
       />
 
@@ -241,7 +244,7 @@ export default function AppealsPage() {
         <StatCard icon={<CalendarDays className="h-5 w-5" />} tone="caution" label={t("appeals.stats.month")} value={formatMoney(stats?.monthCount ?? 0)} />
       </div>
 
-      {canManage && (
+      {canReadPublicLink && (
         <Card className="mb-5 flex flex-wrap items-center justify-between gap-3 p-5">
           <div className="flex items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-accent/12 text-accent">
@@ -261,9 +264,11 @@ export default function AppealsPage() {
                 {copied ? t("appeals.publicLink.copied") : t("appeals.publicLink.copy")}
               </Button>
             )}
-            <Button onClick={handleCreateLink} loading={createLink.isPending}>
-              {publicLink.data?.active ? t("appeals.publicLink.regenerate") : t("appeals.publicLink.create")}
-            </Button>
+            <Can permission="appeals-public-link.create">
+              <Button onClick={handleCreateLink} loading={createLink.isPending}>
+                {publicLink.data?.active ? t("appeals.publicLink.regenerate") : t("appeals.publicLink.create")}
+              </Button>
+            </Can>
           </div>
         </Card>
       )}

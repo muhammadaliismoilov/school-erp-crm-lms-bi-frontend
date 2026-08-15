@@ -11,6 +11,7 @@ import {
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Can } from "@/components/auth/can";
 
 const DEFAULT_COLOR = "#f59e0b";
 
@@ -96,24 +97,26 @@ export function LeadTagPicker({ leadId, selected }: { leadId: string; selected: 
             })}
             {(tags.data?.length ?? 0) === 0 && <span className="text-xs text-ink-muted">{t("crm.tags.empty")}</span>}
           </div>
-          <div className="flex items-center gap-2">
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleCreate();
-                }
-              }}
-              maxLength={60}
-              placeholder={t("crm.tags.newPlaceholder")}
-              className="h-8"
-            />
-            <Button size="sm" variant="secondary" onClick={handleCreate} loading={createTag.isPending} disabled={!newName.trim()}>
-              {t("crm.tags.create")}
-            </Button>
-          </div>
+          <Can permission="crm-tags.create">
+            <div className="flex items-center gap-2">
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreate();
+                  }
+                }}
+                maxLength={60}
+                placeholder={t("crm.tags.newPlaceholder")}
+                className="h-8"
+              />
+              <Button size="sm" variant="secondary" onClick={handleCreate} loading={createTag.isPending} disabled={!newName.trim()}>
+                {t("crm.tags.create")}
+              </Button>
+            </div>
+          </Can>
         </div>
       )}
     </div>

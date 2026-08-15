@@ -17,9 +17,9 @@ import {
 import { formatMoneyShort, useDashboardOverview, type DashboardOverview } from "@/lib/api/dashboard";
 import { AttendanceTrendChart, LeadFunnelChart, RevenueChart } from "@/components/dashboard/overview-charts";
 import { API_TOTAL_ENDPOINTS } from "@/lib/api/manifest";
-import { useAuthStore } from "@/lib/auth/store";
 import { Card, Spinner } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useCan } from "@/lib/auth/use-can";
 
 // ─── Sana sarlavhasi ────────────────────────────────────────────────────────
 
@@ -64,7 +64,7 @@ const ACTION_DEFS: Record<string, { label: (n: number) => string; href: string; 
 // ─── Sahifa ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   const { data, isLoading } = useDashboardOverview();
 
   return (
@@ -557,12 +557,14 @@ function RecentActivityCard({ items }: { items: NonNullable<DashboardOverview["r
 
 function QuickActionsCard({ canFn, className }: { canFn: (p: string) => boolean; className?: string }) {
   const actions = [
-    ["O'quvchi qo'shish", "/students", "students.manage"],
-    ["Xodim qo'shish", "/hr/employees", "hr.manage"],
-    ["To'lov kiritish", "/finance/student-payments", "finance.manage"],
-    ["Lid qo'shish", "/crm", "crm.manage"],
-    ["Oylik hisobi", "/hr/payroll", "hr.read"],
-    ["Davomat taxtasi", "/attendance", "attendance.read"],
+    // Har havola o'z sahifasidagi ASOSIY tugma imtiyoziga bog'landi — ruxsatsiz
+    // foydalanuvchi "qo'shish" yorlig'ini bosib, tugmasi yo'q sahifaga tushmasin.
+    ["O'quvchi qo'shish", "/students", "students.create"],
+    ["Xodim qo'shish", "/hr/employees", "hr-staff.create"],
+    ["To'lov kiritish", "/finance/student-payments", "student-payments.create"],
+    ["Lid qo'shish", "/crm", "crm-leads.create"],
+    ["Oylik hisobi", "/hr/payroll", "hr-payrolls.read"],
+    ["Davomat taxtasi", "/attendance", "attendance-records.read"],
   ].filter(([, , perm]) => canFn(perm));
 
   return (

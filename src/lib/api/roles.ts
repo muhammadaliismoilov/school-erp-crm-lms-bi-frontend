@@ -12,6 +12,9 @@ export interface LocalizedLabel {
   en: string;
 }
 
+/** Ruxsatdan ALOHIDA qatlam: `all` — barcha qatorlar, `own` — faqat o'ziniki. */
+export type DataScope = "all" | "own";
+
 export interface RolePermission {
   code: string;
   module: string;
@@ -26,6 +29,7 @@ export interface Role {
   title: string;
   description?: string | null;
   isSystem: boolean;
+  dataScope: DataScope;
   permissionCount: number;
   permissions: RolePermission[];
   createdAt?: string;
@@ -64,6 +68,7 @@ export interface RoleInput {
   permissionCodes: string[];
   title?: Partial<LocalizedLabel>;
   description?: Partial<LocalizedLabel>;
+  dataScope?: DataScope;
 }
 
 // ---- Permission catalog (GET /permissions/catalog) ----

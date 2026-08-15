@@ -2,10 +2,10 @@
 
 import { Info, Trash2 } from "lucide-react";
 import { useCourse, useRemoveCourseStudent } from "@/lib/api/courses";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 interface Props {
   open: boolean;
@@ -24,8 +24,9 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 export function CourseDetailDrawer({ open, courseId, onClose }: Props) {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("academic.manage");
+  // Kursdan o'quvchini olib tashlash — DELETE courses/:id/students/:studentId,
+  // backend uni kursni yangilash deb hisoblaydi.
+  const { canUpdate } = useCrudPermissions("academic-courses");
   const { data, isLoading } = useCourse(open ? courseId : null);
   const removeStudent = useRemoveCourseStudent();
 
@@ -77,7 +78,7 @@ export function CourseDetailDrawer({ open, courseId, onClose }: Props) {
                         <span className="ml-2 text-xs text-ink-muted">{student.className}</span>
                       )}
                     </span>
-                    {canManage && (
+                    {canUpdate && (
                       <Button
                         variant="ghost"
                         size="sm"

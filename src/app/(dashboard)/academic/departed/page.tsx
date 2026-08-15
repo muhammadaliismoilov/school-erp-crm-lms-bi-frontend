@@ -22,7 +22,6 @@ import {
   type Student,
 } from "@/lib/api/students";
 import { useClassList } from "@/lib/api/classes";
-import { useAuthStore } from "@/lib/auth/store";
 import { formatDateTimeDMY } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/card";
@@ -33,6 +32,7 @@ import { Spinner } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { StudentAvatar } from "@/components/students/student-avatar";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 const GENDER_TABS: { value: "" | Gender; label: string }[] = [
   { value: "", label: "Barchasi" },
@@ -49,8 +49,7 @@ const GENDER_LABEL: Record<string, string> = {
 const PAGE_SIZE = 30;
 
 export default function DepartedStudentsPage() {
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("students.manage");
+  const { canUpdate, canDelete, canMutate } = useCrudPermissions("students");
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -273,7 +272,7 @@ export default function DepartedStudentsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      {canManage && (
+                      {canMutate && (
                         <div className="relative inline-block">
                           <button
                             onClick={() => setMenuFor(menuFor === s.id ? null : s.id)}
@@ -284,24 +283,28 @@ export default function DepartedStudentsPage() {
                           </button>
                           {menuFor === s.id && (
                             <div className="absolute right-0 z-20 mt-1 w-44 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
-                              <button
-                                onClick={() => {
-                                  setRestoring(s);
-                                  setMenuFor(null);
-                                }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
-                              >
-                                <RotateCcw className="h-4 w-4" /> Tiklash
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setDeleting(s);
-                                  setMenuFor(null);
-                                }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
-                              >
-                                <Trash2 className="h-4 w-4" /> Butunlay o‘chirish
-                              </button>
+                              {canUpdate && (
+                                <button
+                                  onClick={() => {
+                                    setRestoring(s);
+                                    setMenuFor(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-parchment"
+                                >
+                                  <RotateCcw className="h-4 w-4" /> Tiklash
+                                </button>
+                              )}
+                              {canDelete && (
+                                <button
+                                  onClick={() => {
+                                    setDeleting(s);
+                                    setMenuFor(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-negative hover:bg-negative/8"
+                                >
+                                  <Trash2 className="h-4 w-4" /> Butunlay o‘chirish
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>

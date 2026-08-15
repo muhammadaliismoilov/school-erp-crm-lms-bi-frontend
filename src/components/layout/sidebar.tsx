@@ -5,9 +5,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, LogOut } from "lucide-react";
 import { useAuthStore } from "@/lib/auth/store";
+import { useCan } from "@/lib/auth/use-can";
 import { useI18n } from "@/lib/i18n/provider";
 import {
   NAV_ITEMS,
+  isGroupVisible,
   isGroup,
   type NavGroup,
   type NavLeaf,
@@ -53,7 +55,7 @@ function NavLeafLink({
 function NavGroupItem({ group }: { group: NavGroup }) {
   const pathname = usePathname();
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   const Icon = group.icon;
 
   const childActive = group.children.some((c) =>
@@ -99,10 +101,14 @@ function NavGroupItem({ group }: { group: NavGroup }) {
 export function Sidebar() {
   const { t } = useI18n();
   const router = useRouter();
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
-  const visible = NAV_ITEMS.filter((entry) => can(entry.permission));
+  // Guruh o'z darvozasiga emas, bolalariga qarab ko'rinadi: bitta yaproqqa
+  // ruxsati bor foydalanuvchi bo'limni ocha olishi kerak (T-01).
+  const visible = NAV_ITEMS.filter((entry) =>
+    isGroup(entry) ? isGroupVisible(entry, can) : can(entry.permission),
+  );
 
   async function handleSignOut() {
     await signOut();

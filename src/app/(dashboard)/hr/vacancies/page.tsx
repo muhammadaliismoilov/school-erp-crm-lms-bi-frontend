@@ -33,6 +33,12 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
 import { Drawer } from "@/components/ui/drawer";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  RowActions,
+  useAnyRowAction,
+  type RowAction,
+} from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 
 const STATUS_OPTIONS: { value: VacancyStatus; label: string }[] = [
   { value: "open", label: "Ochiq" },
@@ -101,22 +107,47 @@ export default function VacanciesPage() {
     }
   }
 
+  const rowActions: RowAction<Vacancy>[] = [
+    {
+      key: "update",
+      label: "Tahrirlash",
+      icon: Pencil,
+      permission: "hr-vacancies.update",
+      onSelect: (v) => {
+        setEditing(v);
+        setDrawerOpen(true);
+      },
+    },
+    {
+      key: "delete",
+      label: "O'chirish",
+      icon: Trash2,
+      tone: "danger",
+      permission: "hr-vacancies.delete",
+      onSelect: (v) => setDeleting(v),
+    },
+  ];
+  const showActions = useAnyRowAction(rowActions);
+  const colCount = showActions ? 6 : 5;
+
   return (
     <div className="stagger">
       <PageHeader
         title="Vakansiyalar"
         subtitle="Ochiq ish o'rinlarini boshqarish"
         action={
-          <Button
-            variant="accent"
-            onClick={() => {
-              setEditing(null);
-              setDrawerOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Vakansiya qo'shish
-          </Button>
+          <Can permission="hr-vacancies.create">
+            <Button
+              variant="accent"
+              onClick={() => {
+                setEditing(null);
+                setDrawerOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Vakansiya qo'shish
+            </Button>
+          </Can>
         }
       />
 
@@ -151,21 +182,23 @@ export default function VacanciesPage() {
                 <th className="px-4 py-3 font-medium">Bo'lim</th>
                 <th className="px-4 py-3 font-medium">Maosh</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={6}><Spinner className="mx-auto h-5 w-5" /></StateRow>
+                <StateRow colSpan={colCount}><Spinner className="mx-auto h-5 w-5" /></StateRow>
               ) : isError ? (
-                <StateRow colSpan={6}>
+                <StateRow colSpan={colCount}>
                   <div className="flex flex-col items-center gap-2 text-ink-muted">
                     <span className="text-negative">Ma'lumotni yuklashda xatolik</span>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>Qayta urinish</Button>
                   </div>
                 </StateRow>
               ) : rows.length === 0 ? (
-                <StateRow colSpan={6}><span className="text-ink-muted">Ma'lumot yo'q</span></StateRow>
+                <StateRow colSpan={colCount}><span className="text-ink-muted">Ma'lumot yo'q</span></StateRow>
               ) : (
                 rows.map((v, i) => (
                   <tr key={v.id} className="border-b border-line/60 last:border-0">
@@ -179,27 +212,11 @@ export default function VacanciesPage() {
                     <td className="px-4 py-3">
                       <Badge tone={VACANCY_STATUS_TONE[v.status]}>{VACANCY_STATUS_LABELS[v.status]}</Badge>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Tahrirlash"
-                          onClick={() => {
-                            setEditing(v);
-                            setDrawerOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          title="O'chirish"
-                          onClick={() => setDeleting(v)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3">
+                        <RowActions row={v} actions={rowActions} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

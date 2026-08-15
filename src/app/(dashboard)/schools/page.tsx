@@ -8,7 +8,6 @@ import {
   type School,
 } from "@/lib/api/schools";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,8 @@ import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { SchoolFormModal } from "@/components/schools/school-form-modal";
 import { formatMoney } from "@/lib/utils";
+import { Can } from "@/components/auth/can";
+import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
 
 const typeTone: Record<string, "neutral" | "positive" | "accent" | "caution"> = {
   general: "neutral",
@@ -50,8 +51,8 @@ function StatCard({
 
 export default function SchoolsPage() {
   const { t, locale } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("settings.manage");
+  // ATAYLAB qo'pol: maktablar — super-admin infratuzilmasi, `schools.controller`
+  // butunlay `SETTINGS_MANAGE` da (granular rollout'dan tashqarida qoldirilgan).
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -86,6 +87,25 @@ export default function SchoolsPage() {
       setDeleteError(err instanceof ApiError ? err.localized(locale) : t("common.error"));
     }
   }
+
+  const rowActions: RowAction<School>[] = [
+    {
+      key: "update",
+      label: t("common.edit"),
+      icon: Pencil,
+      permission: "settings-school.update",
+      onSelect: openEdit,
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: Trash2,
+      tone: "danger",
+      permission: "settings-school.delete",
+      onSelect: setDeleting,
+    },
+  ];
+  const actionsColumn = useRowActionsColumn<School>({ actions: rowActions, header: "" });
 
   const columns: Column<School>[] = [
     {
@@ -123,36 +143,7 @@ export default function SchoolsPage() {
       className: "tnum",
       render: (s) => formatMoney(s.capacities.total),
     },
-    ...(canManage
-      ? [
-          {
-            key: "actions",
-            header: "",
-            align: "right" as const,
-            render: (s: School) => (
-              <div className="flex items-center justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openEdit(s)}
-                  aria-label={t("common.edit")}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDeleting(s)}
-                  aria-label={t("common.delete")}
-                  className="text-negative"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    ...actionsColumn,
   ];
 
   const stats = data?.stats;
@@ -163,12 +154,12 @@ export default function SchoolsPage() {
         title={t("schools.title")}
         subtitle={t("schools.listSubtitle")}
         action={
-          canManage && (
+          <Can permission="settings-school.create">
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
               {t("schools.new")}
             </Button>
-          )
+          </Can>
         }
       />
 

@@ -34,6 +34,12 @@ import { Select } from "@/components/ui/select";
 import { DateInput } from "@/components/ui/date-input";
 import { Drawer } from "@/components/ui/drawer";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  RowActions,
+  useAnyRowAction,
+  type RowAction,
+} from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 
 const STATUS_OPTIONS = (Object.keys(PAYMENT_STATUS_LABELS) as HrPaymentStatus[]).map((s) => ({
   value: s,
@@ -93,22 +99,47 @@ export default function PaymentsPage() {
     }
   }
 
+  const rowActions: RowAction<HrPayment>[] = [
+    {
+      key: "update",
+      label: "Tahrirlash",
+      icon: Pencil,
+      permission: "hr-payments.update",
+      onSelect: (p) => {
+        setEditing(p);
+        setDrawerOpen(true);
+      },
+    },
+    {
+      key: "delete",
+      label: "O'chirish",
+      icon: Trash2,
+      tone: "danger",
+      permission: "hr-payments.delete",
+      onSelect: (p) => setDeleting(p),
+    },
+  ];
+  const showActions = useAnyRowAction(rowActions);
+  const colCount = showActions ? 6 : 5;
+
   return (
     <div className="stagger">
       <PageHeader
         title="To'lovlar"
         subtitle="Xodimlar to'lovlarini boshqarish"
         action={
-          <Button
-            variant="accent"
-            onClick={() => {
-              setEditing(null);
-              setDrawerOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            To'lov qo'shish
-          </Button>
+          <Can permission="hr-payments.create">
+            <Button
+              variant="accent"
+              onClick={() => {
+                setEditing(null);
+                setDrawerOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              To'lov qo'shish
+            </Button>
+          </Can>
         }
       />
 
@@ -143,21 +174,23 @@ export default function PaymentsPage() {
                 <th className="px-4 py-3 font-medium">Summa</th>
                 <th className="px-4 py-3 font-medium">Sana</th>
                 <th className="px-4 py-3 font-medium">Holat</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={6}><Spinner className="mx-auto h-5 w-5" /></StateRow>
+                <StateRow colSpan={colCount}><Spinner className="mx-auto h-5 w-5" /></StateRow>
               ) : isError ? (
-                <StateRow colSpan={6}>
+                <StateRow colSpan={colCount}>
                   <div className="flex flex-col items-center gap-2 text-ink-muted">
                     <span className="text-negative">Ma'lumotni yuklashda xatolik</span>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>Qayta urinish</Button>
                   </div>
                 </StateRow>
               ) : rows.length === 0 ? (
-                <StateRow colSpan={6}><span className="text-ink-muted">Ma'lumotlar yo'q</span></StateRow>
+                <StateRow colSpan={colCount}><span className="text-ink-muted">Ma'lumotlar yo'q</span></StateRow>
               ) : (
                 rows.map((p, i) => (
                   <tr key={p.id} className="border-b border-line/60 last:border-0">
@@ -166,27 +199,11 @@ export default function PaymentsPage() {
                     <td className="px-4 py-3 tnum text-ink">{p.amount.toLocaleString("ru-RU")}</td>
                     <td className="px-4 py-3 text-ink-soft">{p.paymentDate ?? "—"}</td>
                     <td className="px-4 py-3"><Badge tone={PAYMENT_STATUS_TONE[p.status]}>{PAYMENT_STATUS_LABELS[p.status]}</Badge></td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Tahrirlash"
-                          onClick={() => {
-                            setEditing(p);
-                            setDrawerOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          title="O'chirish"
-                          onClick={() => setDeleting(p)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3">
+                        <RowActions row={p} actions={rowActions} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

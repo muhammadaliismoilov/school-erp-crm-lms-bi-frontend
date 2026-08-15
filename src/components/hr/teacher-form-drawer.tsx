@@ -23,12 +23,16 @@ import { Drawer } from "@/components/ui/drawer";
 const CATEGORY_OPTIONS: { value: QualificationCategory; label: string }[] =
   QUALIFICATION_CATEGORIES.map((value) => ({ value, label: QUALIFICATION_LABELS[value] }));
 
+// "Sinf rahbari" ATAYLAB yo'q (T-05): bu bayroq oylik dvigateliga ta'sir
+// qilmaydi — haqiqiy biriktiruv "Sinf rahbarligi" sahifasida (/hr/class-leaderships)
+// qilinadi. Shu yerda checkbox qoldirilsa, u hech narsaga ta'sir qilmaydigan
+// yolg'on nazoratga aylanardi. `isClassLeader` maydonining o'zi FormState'da
+// o'zgarishsiz uzatiladi — eski qiymat yo'qolmaydi, faqat endi tahrirlanmaydi.
 const ROLE_FIELDS = [
   { key: "isSubjectTeacher", label: "Fan o'qituvchisi" },
   { key: "isAssistantTeacher", label: "Yordamchi o'qituvchi" },
   { key: "isMbr", label: "MBR" },
   { key: "isExtraLesson", label: "Qo'shimcha dars" },
-  { key: "isClassLeader", label: "Sinf rahbari" },
 ] as const;
 
 type FormState = {

@@ -40,6 +40,12 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  RowActions,
+  useAnyRowAction,
+  type RowAction,
+} from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 import { CredentialsModal, StaffFormModal } from "@/components/hr/staff-form-modal";
 
 const STATUS_OPTIONS = [
@@ -135,15 +141,51 @@ export default function EmployeesPage() {
     }
   }
 
+  const rowActions: RowAction<StaffMember>[] = [
+    {
+      key: "detail",
+      label: "Batafsil",
+      icon: Eye,
+      permission: "hr-staff.read",
+      onSelect: (s) => router.push(`/hr/employees/${s.id}`),
+    },
+    {
+      key: "update",
+      label: "Tahrirlash",
+      icon: Pencil,
+      permission: "hr-staff.update",
+      onSelect: (s) => openEdit(s),
+    },
+    {
+      key: "salaryHistory",
+      label: "Maosh tarixi",
+      icon: History,
+      permission: "finance-salaries.read",
+      onSelect: (s) => setHistoryFor(s),
+    },
+    {
+      key: "delete",
+      label: "O‘chirish",
+      icon: Trash2,
+      tone: "danger",
+      permission: "hr-staff.delete",
+      onSelect: (s) => setDeleting(s),
+    },
+  ];
+  const showActions = useAnyRowAction(rowActions);
+  const colCount = showActions ? 9 : 8;
+
   return (
     <div className="stagger">
       <PageHeader
         title="Xodimlar"
         action={
-          <Button variant="accent" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            Xodim qo‘shish
-          </Button>
+          <Can permission="hr-staff.create">
+            <Button variant="accent" onClick={openCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Xodim qo‘shish
+            </Button>
+          </Can>
         }
       />
 
@@ -231,16 +273,18 @@ export default function EmployeesPage() {
                 <th className="px-4 py-3 font-medium">Telefon</th>
                 <th className="px-4 py-3 font-medium">Ishga qabul sanasi</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={9}>
+                <StateRow colSpan={colCount}>
                   <Spinner className="mx-auto h-5 w-5" />
                 </StateRow>
               ) : isError ? (
-                <StateRow colSpan={9}>
+                <StateRow colSpan={colCount}>
                   <div className="flex flex-col items-center gap-2 text-ink-muted">
                     <span className="text-negative">Ma‘lumotni yuklashda xatolik</span>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>
@@ -249,7 +293,7 @@ export default function EmployeesPage() {
                   </div>
                 </StateRow>
               ) : rows.length === 0 ? (
-                <StateRow colSpan={9}>
+                <StateRow colSpan={colCount}>
                   <span className="text-ink-muted">Ma‘lumot yo‘q</span>
                 </StateRow>
               ) : (
@@ -280,38 +324,11 @@ export default function EmployeesPage() {
                         {EMPLOYMENT_STATUS_LABELS[s.status]}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Batafsil"
-                          onClick={() => router.push(`/hr/employees/${s.id}`)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Tahrirlash"
-                          onClick={() => openEdit(s)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Maosh tarixi"
-                          onClick={() => setHistoryFor(s)}
-                        >
-                          <History className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          title="O‘chirish"
-                          onClick={() => setDeleting(s)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <RowActions row={s} actions={rowActions} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

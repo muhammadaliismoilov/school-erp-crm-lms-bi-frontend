@@ -16,12 +16,12 @@ import {
 import { useClassList } from "@/lib/api/classes";
 import { useStudents } from "@/lib/api/students";
 import { useUploadFile } from "@/lib/api/files";
-import { useAuthStore } from "@/lib/auth/store";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { NumberInput } from "@/components/ui/number-input";
 import { PageHeader } from "@/components/ui/page-header";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 const MAX_RECEIPT_SIZE = 10 * 1024 * 1024; // 10 MB — rasmga mos.
 
@@ -64,8 +64,9 @@ function TransactionForm() {
   const editId = params.get("id");
   const isEdit = !!editId;
 
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("finance.manage");
+  // Bir sahifa ikki vazifada: `?id=` bo'lsa tahrirlash (update), aks holda yaratish.
+  const { canCreate, canUpdate } = useCrudPermissions("transactions");
+  const allowed = isEdit ? canUpdate : canCreate;
 
   const { data: options } = useTransactionOptions();
   const { data: classesData } = useClassList();
@@ -198,7 +199,7 @@ function TransactionForm() {
   const busy = createTx.isPending || updateTx.isPending;
   const submitLabel = form.type === "income" ? "Kirimni yaratish" : "Chiqimni yaratish";
 
-  if (!canManage) {
+  if (!allowed) {
     return (
       <div className="card p-8 text-center text-ink-muted">Ushbu amal uchun ruxsatingiz yo‘q.</div>
     );

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Spinner } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Can } from "@/components/auth/can";
 import { PageHeader } from "@/components/ui/page-header";
 import { CredentialsModal } from "@/components/users/credentials-modal";
 import { cn, fullName, loc } from "@/lib/utils";
@@ -186,16 +187,18 @@ export default function StudentParentPage() {
           emptyIcon={<Users className="h-9 w-9" />}
           placeholder="Ism, login yoki telefon bo‘yicha qidirish"
           headerAction={
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setNpError(null);
-                setNpOpen(true);
-              }}
-            >
-              <UserPlus className="h-4 w-4" /> Yangi
-            </Button>
+            <Can permission="users.create">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setNpError(null);
+                  setNpOpen(true);
+                }}
+              >
+                <UserPlus className="h-4 w-4" /> Yangi
+              </Button>
+            </Can>
           }
         />
       </div>
@@ -238,14 +241,16 @@ export default function StudentParentPage() {
               />
               Asosiy vakil
             </label>
-            <Button
-              variant="accent"
-              loading={link.isPending}
-              disabled={students.length === 0 || parents.length === 0}
-              onClick={submit}
-            >
-              <Link2 className="h-4 w-4" /> Biriktirish
-            </Button>
+            <Can permission="student-parents.create" mode="disable">
+              <Button
+                variant="accent"
+                loading={link.isPending}
+                disabled={students.length === 0 || parents.length === 0}
+                onClick={submit}
+              >
+                <Link2 className="h-4 w-4" /> Biriktirish
+              </Button>
+            </Can>
           </div>
         </div>
 

@@ -27,12 +27,19 @@ import {
   type TeacherWorkType,
 } from "@/lib/api/hr-teachers";
 import { QUALIFICATION_CATEGORIES, QUALIFICATION_LABELS, type QualificationCategory } from "@/lib/api/hr";
+import { useClassLeaderList } from "@/lib/api/hr-class-leaderships";
 import { Badge, Card, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  RowActions,
+  useAnyRowAction,
+  type RowAction,
+} from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 import { TeacherDrawer } from "@/components/hr/teacher-form-drawer";
 import { CredentialsModal, StaffFormModal } from "@/components/hr/staff-form-modal";
 
@@ -80,6 +87,12 @@ export default function TeachersPage() {
   const { data: stats } = useTeacherStats();
   const deleteTeacher = useDeleteTeacher();
 
+  // "Sinf rahbari" endi HAQIQIY faol biriktiruvdan hisoblanadi — `Teacher.isClassLeader`
+  // bayrog'i oylik dvigateliga umuman ta'sir qilmasdan, faqat yolg'on nishon ko'rsatib
+  // turgan edi (T-05). Ro'yxat sahifasi bo'lgani uchun BITTA so'rov bilan hammasini olamiz.
+  const { data: activeLeaderships } = useClassLeaderList({ activeOn: new Date().toISOString().slice(0, 10) });
+  const activeLeaderTeacherIds = new Set((activeLeaderships ?? []).map((a) => a.teacherId));
+
   const rows = data?.items ?? [];
   const meta = data?.meta;
   const total = meta?.total ?? 0;
@@ -98,16 +111,41 @@ export default function TeachersPage() {
     }
   }
 
+  const rowActions: RowAction<Teacher>[] = [
+    {
+      key: "update",
+      label: "Tahrirlash",
+      icon: Pencil,
+      permission: "hr-teachers.update",
+      onSelect: (t) => {
+        setEditing(t);
+        setDrawerOpen(true);
+      },
+    },
+    {
+      key: "delete",
+      label: "O'qituvchilik rolini olib tashlash",
+      icon: Trash2,
+      tone: "danger",
+      permission: "hr-teachers.delete",
+      onSelect: (t) => setDeleting(t),
+    },
+  ];
+  const showActions = useAnyRowAction(rowActions);
+  const colCount = showActions ? 8 : 7;
+
   return (
     <div className="stagger">
       <PageHeader
         title="O'qituvchilar ro'yxati"
         subtitle="Maktab o'qituvchilarini boshqarish"
         action={
-          <Button variant="accent" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            O'qituvchi qo'shish
-          </Button>
+          <Can permission="hr-teachers.create">
+            <Button variant="accent" onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              O'qituvchi qo'shish
+            </Button>
+          </Can>
         }
       />
 
@@ -164,21 +202,23 @@ export default function TeachersPage() {
                 <th className="px-4 py-3 font-medium">Toifasi</th>
                 <th className="px-4 py-3 font-medium">Staji</th>
                 <th className="px-4 py-3 font-medium">Ish turi</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <StateRow colSpan={8}><Spinner className="mx-auto h-5 w-5" /></StateRow>
+                <StateRow colSpan={colCount}><Spinner className="mx-auto h-5 w-5" /></StateRow>
               ) : isError ? (
-                <StateRow colSpan={8}>
+                <StateRow colSpan={colCount}>
                   <div className="flex flex-col items-center gap-2 text-ink-muted">
                     <span className="text-negative">Ma'lumotni yuklashda xatolik</span>
                     <Button variant="secondary" size="sm" onClick={() => refetch()}>Qayta urinish</Button>
                   </div>
                 </StateRow>
               ) : rows.length === 0 ? (
-                <StateRow colSpan={8}><span className="text-ink-muted">Ma'lumot yo'q</span></StateRow>
+                <StateRow colSpan={colCount}><span className="text-ink-muted">Ma'lumot yo'q</span></StateRow>
               ) : (
                 rows.map((t, i) => (
                   <tr
@@ -214,7 +254,7 @@ export default function TeachersPage() {
                       {t.category ? (
                         <div>
                           <div className="font-medium text-ink">{CATEGORY_LABELS[t.category]}</div>
-                          <div className="text-xs text-ink-muted">{primaryRole(t)}</div>
+                          <div className="text-xs text-ink-muted">{primaryRole(t, activeLeaderTeacherIds.has(t.id))}</div>
                         </div>
                       ) : (
                         <span className="text-ink-muted">—</span>
@@ -224,27 +264,11 @@ export default function TeachersPage() {
                     <td className="px-4 py-3">
                       <Badge tone="neutral">{WORK_TYPE_LABELS[t.workType]}</Badge>
                     </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                          title="Tahrirlash"
-                          onClick={() => {
-                            setEditing(t);
-                            setDrawerOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          title="O'qituvchilik rolini olib tashlash"
-                          onClick={() => setDeleting(t)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <RowActions row={t} actions={rowActions} />
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -340,10 +364,23 @@ export default function TeachersPage() {
   );
 }
 
-function primaryRole(t: Teacher): string {
+/**
+ * `isActiveLeader` — `/hr/class-leaderships` dagi HAQIQIY faol biriktiruvdan
+ * (T-05). `Teacher.isClassLeader` bayrog'i ATAYLAB ishlatilmaydi: u oylik
+ * dvigateliga ta'sir qilmaydi, faqat yolg'on nishon ko'rsatib turardi.
+ */
+/**
+ * Ustuvorlik ATAYLAB `isActiveLeader`dan boshlanadi: "fan o'qituvchisi" deyarli
+ * har bir qatorda true (asosiy, ajralib turmaydigan holat), shu sabab u birinchi
+ * bo'lsa "sinf rahbari" HECH QACHON ko'rinmasdi — bu ustunning butun maqsadini
+ * (eng ajralib turadigan narsani ko'rsatish) puchga chiqarardi. Bitta o'qituvchi
+ * ikkalasi ham bo'lishi mumkin — bu yerda faqat KOMPAKT ustun uchun bittasi
+ * tanlanadi; to'liq ro'yxat xodim profilida (`TeacherInfoCard`) ko'rinadi.
+ */
+function primaryRole(t: Teacher, isActiveLeader: boolean): string {
+  if (isActiveLeader) return "sinf rahbari";
   if (t.isSubjectTeacher) return "fan o'qituvchisi";
   if (t.isAssistantTeacher) return "yordamchi o'qituvchi";
-  if (t.isClassLeader) return "sinf rahbari";
   if (t.isMbr) return "MBR";
   if (t.isExtraLesson) return "qo'shimcha dars";
   return "—";

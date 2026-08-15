@@ -9,7 +9,6 @@ import {
   type ReferralStatus,
 } from "@/lib/api/referrals";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ReferralFormModal } from "@/components/crm/referral-form-modal";
 import { isoToDMY } from "@/lib/format";
 import { formatMoney } from "@/lib/utils";
+import { Can } from "@/components/auth/can";
+import {
+  useRowActionsColumn,
+  type RowAction,
+} from "@/components/ui/row-actions";
 
 function StatCard({ icon, label, value, tone = "accent" }: {
   icon: React.ReactNode;
@@ -78,8 +82,6 @@ function CopyLink({ url }: { url: string }) {
 
 export default function ReferralsPage() {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("crm.manage");
 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -119,6 +121,25 @@ export default function ReferralsPage() {
     }
   }
 
+  const rowActions: RowAction<Referral>[] = [
+    {
+      key: "update",
+      label: t("common.edit"),
+      icon: Pencil,
+      permission: "crm-referrals.update",
+      onSelect: openEdit,
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: Trash2,
+      tone: "danger",
+      permission: "crm-referrals.delete",
+      onSelect: setDeleting,
+    },
+  ];
+  const actionsColumn = useRowActionsColumn<Referral>({ actions: rowActions, header: "" });
+
   const columns: Column<Referral>[] = [
     { key: "index", header: "№", render: (r) => <span className="text-ink-muted tnum">{rows.indexOf(r) + 1}</span> },
     {
@@ -140,22 +161,7 @@ export default function ReferralsPage() {
     },
     { key: "leads", header: t("referral.col.leads"), render: (r) => <span className="text-sm text-ink-soft tnum">{r.leadCount}</span> },
     { key: "link", header: t("referral.col.link"), align: "right" as const, render: (r) => <CopyLink url={r.url} /> },
-    {
-      key: "actions",
-      header: "",
-      align: "right" as const,
-      render: (r) =>
-        canManage && (
-          <div className="flex items-center justify-end gap-1">
-            <Button variant="ghost" size="sm" onClick={() => openEdit(r)} aria-label={t("common.edit")}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="text-negative" onClick={() => setDeleting(r)} aria-label={t("common.delete")}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ),
-    },
+    ...actionsColumn,
   ];
 
   return (
@@ -164,12 +170,12 @@ export default function ReferralsPage() {
         title={t("referral.title")}
         subtitle={t("referral.subtitle")}
         action={
-          canManage && (
+          <Can permission="crm-referrals.create">
             <Button onClick={openCreate}>
               <Plus className="h-4 w-4" />
               {t("referral.new")}
             </Button>
-          )
+          </Can>
         }
       />
 

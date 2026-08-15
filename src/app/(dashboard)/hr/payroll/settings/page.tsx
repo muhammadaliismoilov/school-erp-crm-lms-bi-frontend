@@ -23,6 +23,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { PageHeader } from "@/components/ui/page-header";
+import { Can } from "@/components/auth/can";
 
 export default function PayrollSettingsPage() {
   const [toast, setToast] = useState<string | null>(null);
@@ -126,16 +127,18 @@ function RateCardsSection({ onToast }: { onToast: (msg: string) => void }) {
             Bitta dars uchun; yangi stavka yangi yozuv bilan kiritiladi — tarix saqlanadi
           </p>
         </div>
-        <Button
-          variant="accent"
-          size="sm"
-          onClick={() => {
-            setError(null);
-            setOpen(true);
-          }}
-        >
-          <Plus className="mr-1.5 h-4 w-4" /> Stavka
-        </Button>
+        <Can permission="hr-payroll-config.create">
+          <Button
+            variant="accent"
+            size="sm"
+            onClick={() => {
+              setError(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> Stavka
+          </Button>
+        </Can>
       </div>
 
       {isLoading ? (
@@ -171,13 +174,15 @@ function RateCardsSection({ onToast }: { onToast: (msg: string) => void }) {
                       {isActive && <Badge tone="positive">amalda</Badge>}
                     </td>
                     <td className="py-2.5 text-right">
-                      <button
-                        className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
-                        title="O'chirish"
-                        onClick={() => setDeleting(c)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <Can permission="hr-payroll-config.delete">
+                        <button
+                          className="rounded-md p-1.5 text-rose-500 hover:bg-rose-500/10"
+                          title="O'chirish"
+                          onClick={() => setDeleting(c)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </Can>
                     </td>
                   </tr>
                 );
@@ -267,9 +272,11 @@ function PolicySection({ onToast }: { onToast: (msg: string) => void }) {
             <NumberInput value={maxCount} onChange={setMaxCount} placeholder="3" />
           </Field>
           <div className="flex justify-end">
-            <Button variant="accent" size="sm" loading={update.isPending} onClick={save}>
-              <Save className="mr-1.5 h-4 w-4" /> Saqlash
-            </Button>
+            <Can permission="hr-payroll-config.update">
+              <Button variant="accent" size="sm" loading={update.isPending} onClick={save}>
+                <Save className="mr-1.5 h-4 w-4" /> Saqlash
+              </Button>
+            </Can>
           </div>
         </div>
       )}
@@ -313,9 +320,11 @@ function HolidaysSection({ onToast }: { onToast: (msg: string) => void }) {
       <div className="mt-4 flex gap-2">
         <DatePicker value={date} onChange={setDate} />
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Bayram nomi" />
-        <Button variant="secondary" loading={createHoliday.isPending} onClick={add}>
-          <Plus className="h-4 w-4" />
-        </Button>
+        <Can permission="hr-holidays.create">
+          <Button variant="secondary" loading={createHoliday.isPending} onClick={add}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </Can>
       </div>
 
       {isLoading ? (
@@ -334,13 +343,15 @@ function HolidaysSection({ onToast }: { onToast: (msg: string) => void }) {
                   <span className="tnum mr-3 text-ink-muted">{formatDateDMY(h.date)}</span>
                   {h.name}
                 </span>
-                <button
-                  className="rounded-md p-1 text-rose-500 hover:bg-rose-500/10"
-                  title="O'chirish"
-                  onClick={() => deleteHoliday.mutate(h.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <Can permission="hr-holidays.delete">
+                  <button
+                    className="rounded-md p-1 text-rose-500 hover:bg-rose-500/10"
+                    title="O'chirish"
+                    onClick={() => deleteHoliday.mutate(h.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Can>
               </li>
             ))
           )}

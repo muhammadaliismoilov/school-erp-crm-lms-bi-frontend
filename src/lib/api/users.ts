@@ -119,8 +119,15 @@ export interface UserInput {
   workplace?: string;
 }
 
-/** Matches UpdateUserDto — every field optional, plus status. */
-export type UserUpdateInput = Partial<UserInput> & { status?: UserStatus };
+/**
+ * Matches UpdateUserDto — every field optional, plus status. Rol va parol
+ * ATAYLAB yo'q (T-02): backend endi ularni bu endpointda 400 bilan rad etadi.
+ * Rol — `assignRoles` (roles.assign), parol — `resetPassword`
+ * (users.reset-password).
+ */
+export type UserUpdateInput = Partial<Omit<UserInput, "role" | "roleNames" | "password">> & {
+  status?: UserStatus;
+};
 
 /** Create response — carries the one-time generated password for the credentials dialog. */
 export type CreatedUser = User & { generatedPassword: string };
@@ -140,6 +147,15 @@ const usersApi = {
   },
   remove(id: string): Promise<void> {
     return apiRequest<void>(`/users/${id}`, { method: "DELETE" });
+  },
+  assignRoles(id: string, roleNames: string[]): Promise<User> {
+    return apiRequest<User>(`/users/${id}/roles`, { method: "PATCH", body: { roleNames } });
+  },
+  resetPassword(id: string, password: string): Promise<{ changed: true; revokedSessions: number }> {
+    return apiRequest<{ changed: true; revokedSessions: number }>(`/users/${id}/reset-password`, {
+      method: "POST",
+      body: { password },
+    });
   },
 };
 
@@ -176,6 +192,24 @@ export function useUpdateUser() {
     mutationFn: ({ id, input }: { id: string; input: UserUpdateInput }) =>
       usersApi.update(id, input),
     onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
+  });
+}
+
+/** Rol biriktirish — alohida endpoint, `roles.assign` ruxsati bilan. */
+export function useAssignRoles() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, roleNames }: { id: string; roleNames: string[] }) =>
+      usersApi.assignRoles(id, roleNames),
+    onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
+  });
+}
+
+/** Administrator parol tiklashi — nishonning barcha sessiyalarini bekor qiladi. */
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      usersApi.resetPassword(id, password),
   });
 }
 

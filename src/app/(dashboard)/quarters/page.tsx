@@ -10,11 +10,12 @@ import {
   type QuarterStatus,
 } from "@/lib/api/quarters";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
@@ -53,8 +54,6 @@ function StatCard({
 
 export default function QuartersPage() {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("academic.manage");
 
   const { data: years } = useAcademicYears();
   const [yearId, setYearId] = useState("");
@@ -109,6 +108,28 @@ export default function QuartersPage() {
     }
   }
 
+  const rowActions: RowAction<Quarter>[] = [
+    {
+      key: "update",
+      label: t("common.edit"),
+      icon: Pencil,
+      permission: "academic-quarters.update",
+      onSelect: openEdit,
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: Trash2,
+      tone: "danger",
+      permission: "academic-quarters.delete",
+      onSelect: setDeleting,
+    },
+  ];
+  const actionsColumn = useRowActionsColumn<Quarter>({
+    actions: rowActions,
+    header: "",
+  });
+
   const columns: Column<Quarter>[] = [
     {
       key: "number",
@@ -142,31 +163,7 @@ export default function QuartersPage() {
       header: t("quarters.col.status"),
       render: (q) => <Badge tone={STATUS_TONE[q.status]}>{t(`quarters.status.${q.status}`)}</Badge>,
     },
-    ...(canManage
-      ? [
-          {
-            key: "actions",
-            header: "",
-            align: "right" as const,
-            render: (q: Quarter) => (
-              <div className="flex items-center justify-end gap-1">
-                <Button variant="ghost" size="sm" onClick={() => openEdit(q)} aria-label={t("common.edit")}>
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDeleting(q)}
-                  aria-label={t("common.delete")}
-                  className="text-negative"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    ...actionsColumn,
   ];
 
   return (
@@ -175,12 +172,12 @@ export default function QuartersPage() {
         title={t("quarters.title")}
         subtitle={t("quarters.listSubtitle")}
         action={
-          canManage && (
-            <Button onClick={openCreate} disabled={!yearId}>
-              <Plus className="h-4 w-4" />
-              {t("quarters.new.button")}
-            </Button>
-          )
+          <Can permission="academic-quarters.create">
+              <Button onClick={openCreate} disabled={!yearId}>
+                <Plus className="h-4 w-4" />
+                {t("quarters.new.button")}
+              </Button>
+          </Can>
         }
       />
 

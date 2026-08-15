@@ -5,11 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, GraduationCap, Pencil, Phone, User as UserIcon } from "lucide-react";
 import { useUser } from "@/lib/api/users";
 import { childClassLabel, childName, useParentChildren } from "@/lib/api/parents";
-import { useAuthStore } from "@/lib/auth/store";
 import { Badge, Card, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StudentAvatar } from "@/components/students/student-avatar";
 import { UserFormModal } from "@/components/users/user-form-modal";
+import { useCan } from "@/lib/auth/use-can";
 
 const GENDER_LABEL: Record<string, string> = { male: "Erkak", female: "Ayol" };
 const LANG_LABEL: Record<string, string> = { uz: "O‘zbek", ru: "Rus", en: "Ingliz" };
@@ -20,7 +20,7 @@ export default function ParentDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? "";
   const router = useRouter();
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   const canManage = can("users.update");
 
   const [tab, setTab] = useState<TabKey>("info");

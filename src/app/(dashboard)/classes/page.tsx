@@ -16,11 +16,12 @@ import {
 } from "lucide-react";
 import { useClassList, useDeleteClass, type SchoolClass } from "@/lib/api/classes";
 import { ApiError } from "@/lib/api/types";
-import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { Badge, Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
+import { Can } from "@/components/auth/can";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
@@ -60,8 +61,6 @@ function StatCard({
 export default function ClassesPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("academic.manage");
 
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -105,6 +104,42 @@ export default function ClassesPage() {
   const languagesValue = stats
     ? `${stats.languages.uz}/${stats.languages.ru}/${stats.languages.en}`
     : "0/0/0";
+
+  const rowActions: RowAction<SchoolClass>[] = [
+    {
+      key: "detail",
+      label: t("classes.detail.subtitle"),
+      icon: Eye,
+      permission: "academic-classes.read",
+      onSelect: (c) => router.push(`/classes/${c.id}`),
+    },
+    {
+      key: "update",
+      label: t("common.edit"),
+      icon: Pencil,
+      permission: "academic-classes.update",
+      onSelect: openEdit,
+    },
+    {
+      key: "sms",
+      label: t("classes.detail.sendSms"),
+      icon: MessageSquare,
+      permission: "academic-classes.update",
+      onSelect: (c) => setSmsTarget(c),
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      icon: Trash2,
+      tone: "danger",
+      permission: "academic-classes.delete",
+      onSelect: setDeleting,
+    },
+  ];
+  const actionsColumn = useRowActionsColumn<SchoolClass>({
+    actions: rowActions,
+    header: t("classes.col.actions"),
+  });
 
   const columns: Column<SchoolClass>[] = [
     {
@@ -151,48 +186,7 @@ export default function ClassesPage() {
       header: t("classes.col.students"),
       render: (c) => <span className="text-sm text-ink-soft tnum">{c.stats.studentCount}</span>,
     },
-    {
-      key: "actions",
-      header: t("classes.col.actions"),
-      align: "right" as const,
-      render: (c) => (
-        <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push(`/classes/${c.id}`)}
-            aria-label={t("classes.detail.subtitle")}
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          {canManage && (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => openEdit(c)} aria-label={t("common.edit")}>
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSmsTarget(c)}
-                aria-label={t("classes.detail.sendSms")}
-                className="text-amber-600"
-              >
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setDeleting(c)}
-                aria-label={t("common.delete")}
-                className="text-negative"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-        </div>
-      ),
-    },
+    ...actionsColumn,
   ];
 
   return (
@@ -201,12 +195,12 @@ export default function ClassesPage() {
         title={t("classes.title")}
         subtitle={t("classes.listSubtitle")}
         action={
-          canManage && (
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              {t("classes.new.button")}
-            </Button>
-          )
+          <Can permission="academic-classes.create">
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                {t("classes.new.button")}
+              </Button>
+          </Can>
         }
       />
 

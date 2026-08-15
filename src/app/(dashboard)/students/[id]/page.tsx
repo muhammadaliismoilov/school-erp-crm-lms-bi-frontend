@@ -9,7 +9,6 @@ import {
   useStudent,
   type Student,
 } from "@/lib/api/students";
-import { useAuthStore } from "@/lib/auth/store";
 import { Badge, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StudentAvatar } from "@/components/students/student-avatar";
@@ -23,6 +22,7 @@ import { ConclusionsTab } from "@/components/students/tabs/conclusions-tab";
 import { PaymentsTab } from "@/components/students/tabs/payments-tab";
 import { DocumentsTab } from "@/components/students/tabs/documents-tab";
 import { AnnualReportTab } from "@/components/students/tabs/annual-report-tab";
+import { useCan } from "@/lib/auth/use-can";
 
 const TABS = [
   { key: "overview", label: "Umumiy ma'lumot" },
@@ -42,8 +42,13 @@ export default function StudentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  const can = useAuthStore((s) => s.can);
-  const canManage = can("students.manage");
+  const can = useCan();
+  // Har tab o'z sub-resursining yozuv huquqiga bog'langan — profil tahriri,
+  // yutuqlar, xulosa/SMART maqsadlar va hujjatlar alohida beriladigan huquqlar.
+  const canEditProfile = can("students.update");
+  const canEditAchievements = can("student-achievements.create");
+  const canEditReports = can("student-reports.update");
+  const canEditDocuments = can("student-documents.create");
 
   const [tab, setTab] = useState<TabKey>("overview");
   const [editOpen, setEditOpen] = useState(false);
@@ -92,7 +97,7 @@ export default function StudentDetailPage() {
               </Button>
             </a>
           )}
-          {canManage && (
+          {canEditProfile && (
             <Button onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4" />
               Profil tahrirlash
@@ -123,11 +128,11 @@ export default function StudentDetailPage() {
       {tab === "grades" && <GradesTab studentId={id} />}
       {tab === "attendance" && <AttendanceTab studentId={id} />}
       {tab === "schedule" && <ScheduleTab student={student as Student} />}
-      {tab === "achievements" && <AchievementsTab studentId={id} canManage={canManage} />}
-      {tab === "conclusions" && <ConclusionsTab studentId={id} canManage={canManage} />}
+      {tab === "achievements" && <AchievementsTab studentId={id} canManage={canEditAchievements} />}
+      {tab === "conclusions" && <ConclusionsTab studentId={id} canManage={canEditReports} />}
       {tab === "payments" && <PaymentsTab studentId={id} />}
-      {tab === "documents" && <DocumentsTab studentId={id} canManage={canManage} />}
-      {tab === "annual" && <AnnualReportTab studentId={id} canManage={canManage} />}
+      {tab === "documents" && <DocumentsTab studentId={id} canManage={canEditDocuments} />}
+      {tab === "annual" && <AnnualReportTab studentId={id} canManage={canEditReports} />}
 
       <StudentFormDrawer
         open={editOpen}

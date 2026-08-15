@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/crm";
 import { ApiError } from "@/lib/api/types";
 import { useAuthStore } from "@/lib/auth/store";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -26,9 +27,13 @@ function fmt(iso?: string | null): string {
   return Number.isNaN(d.getTime()) ? iso : `${isoToDMY(iso)} · ${d.toTimeString().slice(0, 5)}`;
 }
 
-export function LeadComments({ leadId, canManage }: { leadId: string; canManage: boolean }) {
+export function LeadComments({ leadId }: { leadId: string }) {
   const { t } = useI18n();
   const meId = useAuthStore((s) => s.user?.id);
+  // Izohlar lidning o'zidan alohida resurs: qo'shish/tahrirlash/o'chirish
+  // huquqi `crm-lead-comments.*` bilan boshqariladi. Egalik (isOwner) — qo'shimcha
+  // shart: backend ham begona izohni tahrirlashga yo'l qo'ymaydi.
+  const { canCreate, canUpdate, canDelete } = useCrudPermissions("crm-lead-comments");
   const comments = useLeadComments(leadId);
   const add = useAddComment(leadId);
   const update = useUpdateComment(leadId);
@@ -107,7 +112,7 @@ export function LeadComments({ leadId, canManage }: { leadId: string; canManage:
         )}
       </div>
 
-      {canManage && (
+      {canCreate && (
         <form onSubmit={submitAdd} className="mb-4 space-y-2 rounded-xl border border-line p-3">
           <textarea
             value={body}
@@ -148,6 +153,8 @@ export function LeadComments({ leadId, canManage }: { leadId: string; canManage:
               key={c.id}
               c={c}
               isOwner={Boolean(meId && c.author?.id === meId)}
+              canUpdate={canUpdate}
+              canDelete={canDelete}
               editing={editingId === c.id}
               editBody={editBody}
               onEditBody={setEditBody}
@@ -174,6 +181,8 @@ export function LeadComments({ leadId, canManage }: { leadId: string; canManage:
 function CommentItem({
   c,
   isOwner,
+  canUpdate,
+  canDelete,
   editing,
   editBody,
   onEditBody,
@@ -187,6 +196,8 @@ function CommentItem({
 }: {
   c: LeadComment;
   isOwner: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
   editing: boolean;
   editBody: string;
   onEditBody: (v: string) => void;
@@ -224,8 +235,8 @@ function CommentItem({
       {c.remindAt && !editing && (
         <button
           type="button"
-          onClick={isOwner ? onToggleReminder : undefined}
-          disabled={!isOwner}
+          onClick={isOwner && canUpdate ? onToggleReminder : undefined}
+          disabled={!isOwner || !canUpdate}
           className={`mt-2 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs ${
             c.reminderDone ? "bg-positive/10 text-positive line-through" : "bg-amber/10 text-amber-600"
           }`}
@@ -236,17 +247,23 @@ function CommentItem({
         </button>
       )}
 
-      {isOwner && !editing && (
+      {isOwner && !editing && (canUpdate || canDelete) && (
         <div className="mt-2 flex items-center justify-end gap-1">
-          <Button variant="ghost" size="sm" onClick={onTogglePin} aria-label={t("crm.comments.pin")} className={c.isPinned ? "text-amber-600" : ""}>
-            <Pin className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onStartEdit} aria-label={t("common.edit")}>
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="sm" className="text-negative" onClick={onDelete} aria-label={t("common.delete")}>
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {canUpdate && (
+            <>
+              <Button variant="ghost" size="sm" onClick={onTogglePin} aria-label={t("crm.comments.pin")} className={c.isPinned ? "text-amber-600" : ""}>
+                <Pin className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onStartEdit} aria-label={t("common.edit")}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+          {canDelete && (
+            <Button variant="ghost" size="sm" className="text-negative" onClick={onDelete} aria-label={t("common.delete")}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       )}
     </li>

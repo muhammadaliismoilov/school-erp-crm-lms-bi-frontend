@@ -33,6 +33,8 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui/page-header";
 import { PayslipDrawer, periodLabel } from "@/components/hr/payslip-drawer";
+import { Can } from "@/components/auth/can";
+import { useCrudPermissions } from "@/lib/auth/use-can";
 
 /** Joriy oy YYYY-MM. */
 function currentPeriod(): string {
@@ -142,6 +144,11 @@ export default function PayrollPage() {
     URL.revokeObjectURL(url);
   }
 
+  // Qator amallari (qayta hisoblash, holat o'tishlari) — hammasi payroll yangilash.
+  const payroll = useCrudPermissions("hr-payrolls");
+  const showActions = payroll.canUpdate;
+  const colCount = showActions ? 9 : 8;
+
   return (
     <div className="stagger">
       <PageHeader
@@ -153,16 +160,20 @@ export default function PayrollPage() {
               <Download className="mr-2 h-4 w-4" />
               CSV
             </Button>
-            <Link href="/hr/payroll/settings">
-              <Button variant="secondary">
-                <Settings className="mr-2 h-4 w-4" />
-                Sozlamalar
+            <Can permission="hr-payroll-config.read">
+              <Link href="/hr/payroll/settings">
+                <Button variant="secondary">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Sozlamalar
+                </Button>
+              </Link>
+            </Can>
+            <Can permission="hr-payrolls.create">
+              <Button variant="accent" loading={generate.isPending} onClick={handleGenerate}>
+                <Calculator className="mr-2 h-4 w-4" />
+                Hisoblash
               </Button>
-            </Link>
-            <Button variant="accent" loading={generate.isPending} onClick={handleGenerate}>
-              <Calculator className="mr-2 h-4 w-4" />
-              Hisoblash
-            </Button>
+            </Can>
           </div>
         }
       />
@@ -236,15 +247,17 @@ export default function PayrollPage() {
                 <th className="px-4 py-3 text-right font-medium">Ushlab</th>
                 <th className="px-4 py-3 text-right font-medium">Netto</th>
                 <th className="px-4 py-3 font-medium">Holat</th>
-                <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                {showActions && (
+                  <th className="px-4 py-3 text-right font-medium">Amallar</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={9} className="px-4 py-12 text-center"><Spinner className="mx-auto h-5 w-5" /></td></tr>
+                <tr><td colSpan={colCount} className="px-4 py-12 text-center"><Spinner className="mx-auto h-5 w-5" /></td></tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-16 text-center text-ink-muted">
+                  <td colSpan={colCount} className="px-4 py-16 text-center text-ink-muted">
                     Bu davr uchun oylik hisoblanmagan — «Hisoblash» tugmasini bosing
                   </td>
                 </tr>
@@ -269,30 +282,32 @@ export default function PayrollPage() {
                     <td className="px-4 py-3">
                       <Badge tone={PAYROLL_STATUS_TONE[r.status]}>{PAYROLL_STATUS_LABELS[r.status]}</Badge>
                     </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1.5">
-                        {r.status === "draft" && (
-                          <button
-                            className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
-                            title="Qayta hisoblash"
-                            onClick={() => handleRecalc(r)}
-                          >
-                            <RefreshCcw className="h-4 w-4" />
-                          </button>
-                        )}
-                        {PAYROLL_NEXT_ACTIONS[r.status].map((a) => (
-                          <Button
-                            key={a.action}
-                            variant="secondary"
-                            size="sm"
-                            loading={transition.isPending}
-                            onClick={() => handleAction(r, a.action)}
-                          >
-                            {a.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </td>
+                    {showActions && (
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {r.status === "draft" && (
+                            <button
+                              className="rounded-md p-1.5 text-ink-muted hover:bg-parchment hover:text-ink"
+                              title="Qayta hisoblash"
+                              onClick={() => handleRecalc(r)}
+                            >
+                              <RefreshCcw className="h-4 w-4" />
+                            </button>
+                          )}
+                          {PAYROLL_NEXT_ACTIONS[r.status].map((a) => (
+                            <Button
+                              key={a.action}
+                              variant="secondary"
+                              size="sm"
+                              loading={transition.isPending}
+                              onClick={() => handleAction(r, a.action)}
+                            >
+                              {a.label}
+                            </Button>
+                          ))}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

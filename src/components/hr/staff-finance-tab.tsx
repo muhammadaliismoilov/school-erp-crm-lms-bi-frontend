@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
+import { Can } from "@/components/auth/can";
 
 function currentPeriod(): string {
   const now = new Date();
@@ -120,9 +121,11 @@ function KpiCard({ staff, onToast }: { staff: StaffMember; onToast: (m: string) 
           </div>
         )}
         <div className="flex justify-end">
-          <Button variant="accent" size="sm" loading={updateKpi.isPending} onClick={save}>
-            Saqlash
-          </Button>
+          <Can permission="hr-staff-kpi.update" mode="disable">
+            <Button variant="accent" size="sm" loading={updateKpi.isPending} onClick={save}>
+              Saqlash
+            </Button>
+          </Can>
         </div>
       </div>
     </Card>
@@ -170,16 +173,18 @@ function AdjustmentsCard({ staffId, onToast }: { staffId: string; onToast: (m: s
           <h2 className="font-display text-base font-semibold text-ink">Bonus / jarima</h2>
           <p className="mt-0.5 text-xs text-ink-muted">Sabab majburiy; tasdiqlangan davrga kiritib bo'lmaydi</p>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            setError(null);
-            setOpen(true);
-          }}
-        >
-          <Plus className="mr-1.5 h-4 w-4" /> Qo'shish
-        </Button>
+        <Can permission="hr-payroll-adjustments.create">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setError(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> Qo'shish
+          </Button>
+        </Can>
       </div>
 
       {isLoading ? (
@@ -207,18 +212,20 @@ function AdjustmentsCard({ staffId, onToast }: { staffId: string; onToast: (m: s
                   {a.type === "bonus" ? "+" : "−"}
                   {formatMoney(a.amount)}
                 </span>
-                <button
-                  className="rounded-md p-1 text-rose-500 hover:bg-rose-500/10"
-                  title="O'chirish"
-                  onClick={() =>
-                    deleteAdj
-                      .mutateAsync(a.id)
-                      .then(() => onToast("O'chirildi"))
-                      .catch(() => onToast("O'chirib bo'lmadi — davr yopilgan"))
-                  }
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <Can permission="hr-payroll-adjustments.delete">
+                  <button
+                    className="rounded-md p-1 text-rose-500 hover:bg-rose-500/10"
+                    title="O'chirish"
+                    onClick={() =>
+                      deleteAdj
+                        .mutateAsync(a.id)
+                        .then(() => onToast("O'chirildi"))
+                        .catch(() => onToast("O'chirib bo'lmadi — davr yopilgan"))
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Can>
               </div>
             </li>
           ))}

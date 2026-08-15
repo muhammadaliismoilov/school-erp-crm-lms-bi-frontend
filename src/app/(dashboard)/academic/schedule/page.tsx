@@ -32,12 +32,12 @@ import { ScheduleGridView } from "@/components/academic/schedule/grid";
 import { QuarterViewGrid } from "@/components/academic/schedule/quarter-view";
 import { MonthViewGrid } from "@/components/academic/schedule/month-view";
 import { LessonEditModal } from "@/components/academic/schedule/lesson-edit-modal";
-import { useAuthStore } from "@/lib/auth/store";
 import { LessonModal } from "@/components/academic/schedule/lesson-modal";
 import { SubstituteModal } from "@/components/academic/schedule/substitute-modal";
 import { AutogenerateWizard } from "@/components/academic/schedule/autogenerate-wizard";
 import { ConflictsDrawer } from "@/components/academic/schedule/conflicts-drawer";
 import { HistoryDrawer } from "@/components/academic/schedule/history-drawer";
+import { useCan } from "@/lib/auth/use-can";
 
 type Tab = "primary" | "high" | "teacher";
 type ViewMode = "quarter" | "month" | "template";
@@ -50,7 +50,7 @@ interface CellTarget {
 
 export default function SchedulePage() {
   const { t } = useI18n();
-  const can = useAuthStore((s) => s.can);
+  const can = useCan();
   // Tahrir amallari (avtogeneratsiya, qo'shish, o'chirish) faqat ruxsat bo'lsa.
   const canManage =
     can("lms-lessons.create") || can("lms-lessons.update") || can("lms-lessons.delete");
