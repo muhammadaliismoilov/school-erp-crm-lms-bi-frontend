@@ -64,6 +64,46 @@ const EMPTY: FormState = {
   personalPhone: "",
 };
 
+const FORM_STATE_KEYS = Object.keys(EMPTY) as (keyof FormState)[];
+const DRAFT_VERSION = 1;
+
+function draftKey(leadId: string): string {
+  return `yuton.enroll-draft.v${DRAFT_VERSION}.${leadId}`;
+}
+
+/** Draft faqat joriy FormState shakliga to'liq mos bo'lsagina qabul qilinadi — eski relizdan qolgan mos kelmaydigan draft formani buzmasin. */
+function isValidDraft(value: unknown): value is FormState {
+  if (!value || typeof value !== "object") return false;
+  return FORM_STATE_KEYS.every((key) => typeof (value as Record<string, unknown>)[key] === "string");
+}
+
+function readDraft(leadId: string): FormState | null {
+  try {
+    const raw = window.sessionStorage.getItem(draftKey(leadId));
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isValidDraft(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(leadId: string, state: FormState) {
+  try {
+    window.sessionStorage.setItem(draftKey(leadId), JSON.stringify(state));
+  } catch {
+    // Storage full yoki private-mode cheklovi — draft o'chib qolsa ham forma o'zi ishlashda davom etadi.
+  }
+}
+
+function clearDraft(leadId: string) {
+  try {
+    window.sessionStorage.removeItem(draftKey(leadId));
+  } catch {
+    // no-op
+  }
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h4 className="font-display text-base font-semibold text-ink">{children}</h4>;
 }
@@ -73,23 +113,98 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
   const enroll = useEnrollLead();
   const [f, setF] = useState<FormState>(EMPTY);
   const [error, setError] = useState<string | null>(null);
+  const [certNumberHint, setCertNumberHint] = useState<string>("");
+  const [jshshirHint, setJshshirHint] = useState<string>("");
+  const [guardianJshshirHint, setGuardianJshshirHint] = useState<string>("");
+  const [passportHint, setPassportHint] = useState<string>("");
+  const [guardianPassportHint, setGuardianPassportHint] = useState<string>("");
 
   useEffect(() => {
-    if (!open) return;
-    // Prefill name/phone from the lead so the operator types less.
-    const [first, ...rest] = (lead?.fullName ?? "").trim().split(/\s+/);
-    setF({
-      ...EMPTY,
-      firstName: lead?.firstName ?? first ?? "",
-      lastName: lead?.lastName ?? rest.join(" ") ?? "",
-      personalPhone: lead?.phone ?? "",
-      guardianPhone: lead?.phone ?? "+998",
-    });
+    if (!open || !lead) return;
+    const draft = readDraft(lead.id);
+    if (draft) {
+      // Refresh'dan keyin qaytilgan — avval to'ldirilgan qiymatlarni tiklaymiz.
+      setF(draft);
+    } else {
+      // Lid'dan ism/telefonni oldindan to'ldiramiz — operator kamroq yozsin.
+      const [first, ...rest] = (lead.fullName ?? "").trim().split(/\s+/);
+      setF({
+        ...EMPTY,
+        firstName: lead.firstName ?? first ?? "",
+        lastName: lead.lastName ?? rest.join(" ") ?? "",
+        personalPhone: lead.phone ?? "",
+        guardianPhone: lead.phone ?? "+998",
+      });
+    }
     setError(null);
+    setCertNumberHint("");
+    setJshshirHint("");
+    setGuardianJshshirHint("");
+    setPassportHint("");
+    setGuardianPassportHint("");
   }, [open, lead]);
+
+  // Kiritilgan ma'lumotlarni debounce bilan sessionStorage'ga yozib turadi —
+  // sahifa tasodifan refresh bo'lsa ham forma bo'sh qolmasin.
+  useEffect(() => {
+    if (!open || !lead) return;
+    const timer = window.setTimeout(() => writeDraft(lead.id, f), 300);
+    return () => window.clearTimeout(timer);
+  }, [open, lead, f]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setF((prev) => ({ ...prev, [key]: value }));
+
+  /** Faqat raqam qabul qiladigan maydonlar (guvohnoma raqami, JSHSHIR) uchun umumiy onChange — length'gacha raqam qoldiradi va ostidagi ko'rsatmani yangilaydi. */
+  const digitsOnlyChange =
+    (key: "birthCertificateNumber" | "jshshir" | "guardianJshshir", length: number, setHint: (hint: string) => void) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const digits = e.target.value.replace(/\D/g, "").slice(0, length);
+      const hadNonDigit = /\D/.test(e.target.value);
+      if (hadNonDigit) {
+        setHint(t("enroll.err.digitsOnly"));
+      } else if (digits.length > 0 && digits.length < length) {
+        setHint(t("enroll.hint.digitsRemaining").replace("{count}", String(length - digits.length)));
+      } else {
+        setHint("");
+      }
+      set(key, digits);
+    };
+
+  /** Passport formati: 2 ta lotin harfi + 7 ta raqam (masalan AA1234567). Har bir belgi o'z pozitsiyasiga (harf/raqam) mos kelmasa e'tiborsiz qoldiriladi va xatolik ko'rsatiladi. */
+  const passportChange =
+    (key: "passport" | "guardianPassport", setHint: (hint: string) => void) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value.toUpperCase();
+      let letters = "";
+      let digits = "";
+      let hadInvalid = false;
+      for (const ch of raw) {
+        if (letters.length < 2 && /[A-Z]/.test(ch)) {
+          letters += ch;
+        } else if (letters.length === 2 && digits.length < 7 && /[0-9]/.test(ch)) {
+          digits += ch;
+        } else {
+          hadInvalid = true;
+        }
+      }
+      const value = letters + digits;
+      if (hadInvalid) {
+        setHint(t("enroll.err.passportFormat"));
+      } else if (letters.length < 2) {
+        setHint(t("enroll.hint.lettersRemaining").replace("{count}", String(2 - letters.length)));
+      } else if (digits.length < 7) {
+        setHint(t("enroll.hint.digitsRemaining").replace("{count}", String(7 - digits.length)));
+      } else {
+        setHint("");
+      }
+      set(key, value);
+    };
+
+  const handleClose = () => {
+    if (lead) clearDraft(lead.id);
+    onClose();
+  };
 
   const genderOptions = [
     { value: "", label: t("common.select") },
@@ -150,6 +265,7 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
 
     try {
       const result = await enroll.mutateAsync({ leadId: lead.id, input });
+      clearDraft(lead.id);
       onEnrolled(result.studentCode);
       onClose();
     } catch (err) {
@@ -160,13 +276,13 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
   return (
     <Drawer
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title={t("enroll.title")}
       subtitle={t("enroll.subtitle")}
       icon={<GraduationCap className="h-5 w-5" />}
       footer={
         <>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={enroll.isPending}>
+          <Button type="button" variant="secondary" onClick={handleClose} disabled={enroll.isPending}>
             {t("common.cancel")}
           </Button>
           <Button type="submit" form="enroll-form" loading={enroll.isPending}>
@@ -206,10 +322,16 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
           <SectionTitle>{t("enroll.section.cert")}</SectionTitle>
           <div className="grid grid-cols-2 gap-4">
             <Field label={`${t("enroll.certSeries")} *`} htmlFor="en-cs">
-              <Input id="en-cs" value={f.birthCertificateSeries} onChange={(e) => set("birthCertificateSeries", e.target.value)} maxLength={20} />
+              <Input id="en-cs" value={f.birthCertificateSeries} onChange={(e) => set("birthCertificateSeries", e.target.value.toUpperCase())} maxLength={20} />
             </Field>
-            <Field label={`${t("enroll.certNumber")} *`} htmlFor="en-cn">
-              <Input id="en-cn" value={f.birthCertificateNumber} onChange={(e) => set("birthCertificateNumber", e.target.value)} maxLength={40} />
+            <Field label={`${t("enroll.certNumber")} *`} htmlFor="en-cn" error={certNumberHint}>
+              <Input
+                id="en-cn"
+                inputMode="numeric"
+                value={f.birthCertificateNumber}
+                onChange={digitsOnlyChange("birthCertificateNumber", 7, setCertNumberHint)}
+                maxLength={7}
+              />
             </Field>
           </div>
         </section>
@@ -218,11 +340,23 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
         <section className="space-y-4">
           <SectionTitle>{t("enroll.section.passport")}</SectionTitle>
           <div className="grid grid-cols-2 gap-4">
-            <Field label={t("enroll.passport")} htmlFor="en-pass">
-              <Input id="en-pass" value={f.passport} onChange={(e) => set("passport", e.target.value)} maxLength={40} />
+            <Field label={t("enroll.passport")} htmlFor="en-pass" error={passportHint}>
+              <Input
+                id="en-pass"
+                value={f.passport}
+                onChange={passportChange("passport", setPassportHint)}
+                placeholder="AA1234567"
+                maxLength={9}
+              />
             </Field>
-            <Field label={t("enroll.jshshir")} htmlFor="en-jsh">
-              <Input id="en-jsh" value={f.jshshir} onChange={(e) => set("jshshir", e.target.value)} maxLength={32} />
+            <Field label={t("enroll.jshshir")} htmlFor="en-jsh" error={jshshirHint}>
+              <Input
+                id="en-jsh"
+                inputMode="numeric"
+                value={f.jshshir}
+                onChange={digitsOnlyChange("jshshir", 14, setJshshirHint)}
+                maxLength={14}
+              />
             </Field>
             <Field label={t("enroll.passportIssued")} htmlFor="en-pid">
               <DatePicker id="en-pid" value={f.passportIssuedDate} onChange={(iso) => set("passportIssuedDate", iso)} />
@@ -240,11 +374,23 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
             <Field label={t("enroll.guardianRelation")} htmlFor="en-gr">
               <Select id="en-gr" value={f.guardianRelation} onChange={(e) => set("guardianRelation", e.target.value)} options={relationOptions} />
             </Field>
-            <Field label={t("enroll.guardianPassport")} htmlFor="en-gp">
-              <Input id="en-gp" value={f.guardianPassport} onChange={(e) => set("guardianPassport", e.target.value)} maxLength={40} />
+            <Field label={t("enroll.guardianPassport")} htmlFor="en-gp" error={guardianPassportHint}>
+              <Input
+                id="en-gp"
+                value={f.guardianPassport}
+                onChange={passportChange("guardianPassport", setGuardianPassportHint)}
+                placeholder="AA1234567"
+                maxLength={9}
+              />
             </Field>
-            <Field label={t("enroll.guardianJshshir")} htmlFor="en-gj">
-              <Input id="en-gj" value={f.guardianJshshir} onChange={(e) => set("guardianJshshir", e.target.value)} maxLength={32} />
+            <Field label={t("enroll.guardianJshshir")} htmlFor="en-gj" error={guardianJshshirHint}>
+              <Input
+                id="en-gj"
+                inputMode="numeric"
+                value={f.guardianJshshir}
+                onChange={digitsOnlyChange("guardianJshshir", 14, setGuardianJshshirHint)}
+                maxLength={14}
+              />
             </Field>
             <Field label={`${t("enroll.guardianPhone")} *`} htmlFor="en-gph">
               <Input id="en-gph" value={f.guardianPhone} onChange={(e) => set("guardianPhone", e.target.value)} placeholder="+998901234567" />
