@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, Info, ShieldCheck } from "lucide-react";
 import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { ApiError } from "@/lib/api/types";
@@ -17,8 +17,18 @@ interface LoginForm {
 }
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const { t, locale } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionExpiredNotice = searchParams.get("reason") === "session_expired";
   const signIn = useAuthStore((s) => s.signIn);
   const verifyTwoFactor = useAuthStore((s) => s.verifyTwoFactor);
   const status = useAuthStore((s) => s.status);
@@ -109,6 +119,13 @@ export default function LoginPage() {
             {t("auth.title")}
           </h1>
           <p className="mt-2 text-sm text-ink-muted">{t("auth.subtitle")}</p>
+
+          {sessionExpiredNotice && (
+            <div className="mt-5 flex items-start gap-2.5 rounded-lg border border-line bg-parchment-deep px-3.5 py-2.5 text-sm text-ink-soft">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" />
+              <span>Sessiyangiz tugadi — davom etish uchun qaytadan kiring.</span>
+            </div>
+          )}
 
           {twoFactorToken ? (
             <form onSubmit={onVerifyCode} className="mt-8 space-y-5">

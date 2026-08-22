@@ -8,6 +8,12 @@ import { tokenStore } from "./tokens";
 interface AuthState {
   user: AuthenticatedUser | null;
   status: "loading" | "authenticated" | "anonymous";
+  /**
+   * `forceSignOut()` (token yangilash muvaffaqiyatsiz) sababli anonim bo'lindimi —
+   * shunda login sahifasi "sessiya tugadi" xabarini ko'rsatadi. Oddiy `signOut()`
+   * yoki hech qachon kirilmagan holatda `false`. Saqlanmaydi (faqat joriy sessiya).
+   */
+  sessionExpired: boolean;
   /** 2FA talab qilinsa twoFactorToken qaytadi (token saqlanmaydi) — UI kod bosqichiga o'tadi. */
   signIn: (login: string, password: string) => Promise<{ twoFactorToken?: string }>;
   /** 2FA ikkinchi bosqichi — kod tasdiqlanib to'liq kirish. */
@@ -24,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       status: "loading",
+      sessionExpired: false,
 
       async signIn(login, password) {
         const res = await authApi.login(login, password);
@@ -31,14 +38,14 @@ export const useAuthStore = create<AuthState>()(
           return { twoFactorToken: res.twoFactorToken };
         }
         tokenStore.set(res.accessToken, res.refreshToken);
-        set({ user: res.user, status: "authenticated" });
+        set({ user: res.user, status: "authenticated", sessionExpired: false });
         return {};
       },
 
       async verifyTwoFactor(twoFactorToken, code) {
         const tokens = await authApi.verifyTwoFactor(twoFactorToken, code);
         tokenStore.set(tokens.accessToken, tokens.refreshToken);
-        set({ user: tokens.user, status: "authenticated" });
+        set({ user: tokens.user, status: "authenticated", sessionExpired: false });
       },
 
       async signOut() {
@@ -47,12 +54,12 @@ export const useAuthStore = create<AuthState>()(
           await authApi.logout(refresh).catch(() => undefined);
         }
         tokenStore.clear();
-        set({ user: null, status: "anonymous" });
+        set({ user: null, status: "anonymous", sessionExpired: false });
       },
 
       forceSignOut() {
         tokenStore.clear();
-        set({ user: null, status: "anonymous" });
+        set({ user: null, status: "anonymous", sessionExpired: true });
       },
 
       hydrate() {

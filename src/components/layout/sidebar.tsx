@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronDown, LogOut } from "lucide-react";
@@ -62,7 +62,12 @@ function NavGroupItem({ group }: { group: NavGroup }) {
     isLeafActive(pathname, c.href),
   );
   const [open, setOpen] = useState(childActive);
-  const expanded = open || childActive;
+
+  // Guruh ichidagi sahifaga tashqaridan o'tilganda avtomatik ochiladi, lekin
+  // foydalanuvchi uni qo'lda yopsa, shu holatda qoladi (T-04).
+  useEffect(() => {
+    if (childActive) setOpen(true);
+  }, [childActive]);
 
   return (
     <div>
@@ -81,11 +86,11 @@ function NavGroupItem({ group }: { group: NavGroup }) {
         <ChevronDown
           className={cn(
             "h-4 w-4 transition-transform",
-            expanded ? "rotate-180" : "",
+            open ? "rotate-180" : "",
           )}
         />
       </button>
-      {expanded && (
+      {open && (
         <div className="mt-0.5 flex flex-col gap-0.5 border-l border-paper/10 pl-3">
           {group.children
             .filter((c) => can(c.permission))

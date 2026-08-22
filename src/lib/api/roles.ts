@@ -126,7 +126,10 @@ export function useRoles(params: RoleListParams) {
     queryKey: [...ROLES_KEY, params],
     queryFn: () => rolesApi.list(params),
     placeholderData: keepPreviousData,
-    staleTime: 30_000,
+    // Rollar kam o'zgaradi; mutatsiyalar invalidateQueries bilan darhol
+    // yangilaydi, shuning uchun sahifaga qayta kirilganda qayta so'ramaslik
+    // xavfsiz.
+    staleTime: 2 * 60_000,
   });
 }
 

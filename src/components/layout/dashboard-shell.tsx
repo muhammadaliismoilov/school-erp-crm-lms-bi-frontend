@@ -14,6 +14,7 @@ import { Topbar } from "./topbar";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const status = useAuthStore((s) => s.status);
+  const sessionExpired = useAuthStore((s) => s.sessionExpired);
   const can = useCan();
   const router = useRouter();
   const pathname = usePathname();
@@ -21,9 +22,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (status === "anonymous") {
-      router.replace("/login");
+      router.replace(sessionExpired ? "/login?reason=session_expired" : "/login");
     }
-  }, [status, router]);
+  }, [status, sessionExpired, router]);
 
   if (status !== "authenticated") {
     return (

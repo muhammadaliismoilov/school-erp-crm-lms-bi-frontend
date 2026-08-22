@@ -4,6 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { apiRequest } from "./client";
+import type { Page, PageMeta } from "./types";
 
 /** Mirrors backend `SESSION_TYPES`. */
 export const COUNSELING_SESSION_TYPES = ["individual", "group", "assessment", "follow_up"] as const;
@@ -57,9 +58,14 @@ export interface CreateCounselingSessionInput {
 
 export type UpdateCounselingSessionInput = Partial<CreateCounselingSessionInput>;
 
+/** Ro'yxat sahifasida bittada ko'rsatiladigan eng ko'p seans soni. */
+const LIST_PAGE_SIZE = 100;
+
 const api = {
-  list(): Promise<CounselingSessionSummary[]> {
-    return apiRequest<CounselingSessionSummary[]>("/counseling/sessions");
+  list(): Promise<Page<CounselingSessionSummary>> {
+    return apiRequest<Page<CounselingSessionSummary>>("/counseling/sessions", {
+      query: { page: 1, limit: LIST_PAGE_SIZE },
+    });
   },
   listByStudent(studentId: string): Promise<CounselingSessionSummary[]> {
     return apiRequest<CounselingSessionSummary[]>(`/counseling/students/${studentId}/sessions`);
@@ -77,11 +83,28 @@ const api = {
 
 const KEY = ["counseling"] as const;
 
-/** `studentId` berilsa — shu o'quvchining tarixi; bo'lmasa — hammasi. */
+export interface CounselingSessionsList {
+  items: CounselingSessionSummary[];
+  /** Faqat filtrsiz (`studentId` yo'q) ro'yxatda bor — sahifalangan. */
+  meta: PageMeta | null;
+}
+
+/**
+ * `studentId` berilsa — shu o'quvchining (tabiatan cheklangan) tarixi;
+ * bo'lmasa — hammasi, `LIST_PAGE_SIZE` bilan sahifalangan (backend endi
+ * butun jadvalni bitta so'rovda qaytarmaydi).
+ */
 export function useCounselingSessions(studentId?: string) {
   return useQuery({
     queryKey: [...KEY, "list", studentId ?? "all"],
-    queryFn: () => (studentId ? api.listByStudent(studentId) : api.list()),
+    queryFn: async (): Promise<CounselingSessionsList> => {
+      if (studentId) {
+        const items = await api.listByStudent(studentId);
+        return { items, meta: null };
+      }
+      const page = await api.list();
+      return { items: page.items, meta: page.meta };
+    },
     staleTime: 10_000,
   });
 }

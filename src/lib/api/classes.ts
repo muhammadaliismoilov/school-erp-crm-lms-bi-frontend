@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "./client";
+import type { PageMeta } from "./types";
 
 /** Mirrors backend ClassLanguage enum. */
 export const CLASS_LANGUAGES = ["uz", "ru", "en"] as const;
@@ -68,6 +69,7 @@ export interface ClassListStats {
 
 export interface ClassListResult {
   items: SchoolClass[];
+  meta: PageMeta;
   stats: ClassListStats;
 }
 
@@ -78,6 +80,8 @@ export interface ClassQuery {
   roomId?: string;
   curatorId?: string;
   search?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface ClassInput {
@@ -199,7 +203,10 @@ export function useClassList(query?: ClassQuery) {
   return useQuery({
     queryKey: [...KEY, query],
     queryFn: () => api.list(query),
-    staleTime: 30_000,
+    // Sinflar ro'yxati kam o'zgaradi va ko'p sahifada (counseling, hisobotlar,
+    // dropdown'lar) qayta so'raladi — mutatsiyalar invalidateQueries bilan
+    // baribir darhol yangilaydi.
+    staleTime: 5 * 60_000,
   });
 }
 

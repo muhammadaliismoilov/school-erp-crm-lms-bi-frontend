@@ -47,7 +47,9 @@ export default function CounselingPage() {
     return () => clearTimeout(id);
   }, [toast]);
 
-  const { data: rows, isLoading, isError, refetch } = useCounselingSessions(studentFilter || undefined);
+  const { data, isLoading, isError, refetch } = useCounselingSessions(studentFilter || undefined);
+  const rows = data?.items;
+  const truncated = Boolean(data?.meta && data.meta.total > data.meta.limit);
   const { data: classesData } = useClassList();
   const { data: studentsData } = useStudents({ page: 1, limit: 100, classId: classFilter || undefined });
 
@@ -112,6 +114,13 @@ export default function CounselingPage() {
           onChange={(e) => setStudentFilter(e.target.value)}
         />
       </div>
+
+      {truncated && (
+        <p className="mb-3 text-xs text-ink-muted">
+          Eng so'nggi {data?.meta?.limit} ta seans ko'rsatilmoqda ({data?.meta?.total} tadan). Qolganini
+          ko'rish uchun o'quvchi bo'yicha filtrlang.
+        </p>
+      )}
 
       <div className="overflow-hidden rounded-xl border border-line bg-surface">
         <div className="overflow-x-auto">

@@ -196,7 +196,10 @@ export function useStaff(params: StaffListParams) {
     queryKey: [...STAFF_KEY, "list", params],
     queryFn: () => api.listStaff(params),
     placeholderData: keepPreviousData,
-    staleTime: 20_000,
+    // Ko'plab HR sahifalari xuddi shu {page:1,limit:100} bilan faqat dropdown
+    // uchun chaqiradi — mutatsiyalar invalidateQueries bilan baribir darhol
+    // yangilaydi, shuning uchun sahifalar orasida qayta so'ramaslik xavfsiz.
+    staleTime: 5 * 60_000,
   });
 }
 
