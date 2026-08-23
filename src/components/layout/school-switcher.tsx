@@ -25,8 +25,16 @@ export function SchoolSwitcher() {
   function onChange(next: string) {
     setValue(next);
     setActiveSchool(next || null);
-    // Yangi maktab bo'yicha hamma narsa qayta yuklansin.
-    qc.clear();
+    // `qc.clear()` + `qc.refetchQueries()` band-band chaqirilsa poyga holati
+    // yuzaga keladi: `clear()` barcha query'larni cache'dan butunlay o'chiradi,
+    // shundan keyin `refetchQueries({type:"active"})` esa endi bo'sh qolgan
+    // cache'ni qidirib hech narsa topmaydi — ekrandagi ma'lumot yangilanmay
+    // qoladi (foydalanuvchi qo'lda refresh qilmaguncha). `resetQueries()` esa
+    // bitta atomik amal: har bir query'ni (cache'dan o'chirmasdan) boshlang'ich
+    // holatga qaytaradi va o'sha zahoti hozir ekranda ochiq turgan (active)
+    // query'larni qayta so'raydi — eski maktabning keshi ko'rinmay qoladi,
+    // yangisi esa avtomatik yuklanadi.
+    void qc.resetQueries();
   }
 
   return (
