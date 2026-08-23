@@ -6,12 +6,12 @@ import {
   USER_GENDERS,
   useAssignRoles,
   useCreateUser,
+  useReassignSchool,
   useResetPassword,
   useUpdateUser,
   type User,
   type UserGender,
   type UserInput,
-  type UserUpdateInput,
 } from "@/lib/api/users";
 import { useCan } from "@/lib/auth/use-can";
 import { useRoles } from "@/lib/api/roles";
@@ -116,12 +116,15 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
   const update = useUpdateUser();
   const assignRoles = useAssignRoles();
   const resetPassword = useResetPassword();
+  const reassignSchool = useReassignSchool();
   const uploadAvatar = useUploadFile();
   const can = useCan();
-  // Rol va parol — alohida huquqlar (T-02): profil tahriri ularni o'z ichiga olmaydi.
+  // Rol, parol va maktab ko'chirish — alohida huquqlar (T-02 + tenant
+  // izolyatsiya tuzatishi): profil tahriri ularni o'z ichiga olmaydi.
   const canAssignRole = can("roles.assign");
   const canResetPassword = can("users.reset-password");
-  const pending = create.isPending || update.isPending || assignRoles.isPending;
+  const canReassignSchool = can("users.reassign-school");
+  const pending = create.isPending || update.isPending || assignRoles.isPending || reassignSchool.isPending;
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
@@ -265,12 +268,26 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
     const payload = buildPayload();
     try {
       if (user) {
-        await update.mutateAsync({ id: user.id, input: payload as UserUpdateInput });
+        // schoolId/branchId bu endpointda yo'q (T-02 + tenant izolyatsiya
+        // tuzatishi) — maktab ko'chirish faqat alohida `reassignSchool`
+        // orqali, faqat super-admin uchun.
+        const { schoolId: _schoolId, branchId: _branchId, ...updatePayload } = payload;
+        await update.mutateAsync({ id: user.id, input: updatePayload });
         // Rol o'zgargan bo'lsa — alohida endpoint (`roles.assign` darvozasi).
         // Profil saqlangandan KEYIN: rol rad etilsa ham profil o'zgarishlari
         // qoladi, xato foydalanuvchiga ko'rinadi.
         if (canAssignRole && form.roleName && form.roleName !== roleOf(user)) {
           await assignRoles.mutateAsync({ id: user.id, roleNames: [form.roleName] });
+        }
+        if (
+          canReassignSchool &&
+          form.schoolId &&
+          (form.schoolId !== (user.schoolId ?? "") || form.branchId !== (user.branchId ?? ""))
+        ) {
+          await reassignSchool.mutateAsync({
+            id: user.id,
+            input: { schoolId: form.schoolId, branchId: form.branchId || undefined },
+          });
         }
         onClose();
       } else {
@@ -573,28 +590,37 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
           </div>
         </section>
 
-        {/* Maktab & Filial (ko'p-maktabli ajratish) */}
-        <section className="space-y-4">
-          <h4 className="label">Maktab va filial</h4>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Maktab" htmlFor="u-school">
-              <Select
-                id="u-school"
-                value={form.schoolId}
-                onChange={(e) => set("schoolId", e.target.value)}
-                options={schoolOptions}
-              />
-            </Field>
-            <Field label="Filial" htmlFor="u-branch">
-              <Select
-                id="u-branch"
-                value={form.branchId}
-                onChange={(e) => set("branchId", e.target.value)}
-                options={branchOptions}
-              />
-            </Field>
-          </div>
-        </section>
+        {/*
+          Maktab & Filial (ko'p-maktabli ajratish). Yaratishda backend
+          school-scoped aktor uchun bu maydonlarni baribir e'tiborsiz
+          qoldiradi (tenant.getSchoolId() ustun), shuning uchun create
+          rejimida hammaga ko'rinadi. Tahrirlashda esa — tenant chegarasini
+          kesib o'tuvchi amal (T-02 uslubida) — faqat `users.reassign-school`
+          huquqiga ega super-adminga ko'rinadi.
+        */}
+        {(!isEdit || canReassignSchool) && (
+          <section className="space-y-4">
+            <h4 className="label">Maktab va filial</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Maktab" htmlFor="u-school">
+                <Select
+                  id="u-school"
+                  value={form.schoolId}
+                  onChange={(e) => set("schoolId", e.target.value)}
+                  options={schoolOptions}
+                />
+              </Field>
+              <Field label="Filial" htmlFor="u-branch">
+                <Select
+                  id="u-branch"
+                  value={form.branchId}
+                  onChange={(e) => set("branchId", e.target.value)}
+                  options={branchOptions}
+                />
+              </Field>
+            </div>
+          </section>
+        )}
 
         {error && (
           <p className="whitespace-pre-line rounded-lg bg-negative/10 px-3 py-2 text-sm text-negative">{error}</p>
