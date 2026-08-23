@@ -120,14 +120,23 @@ export interface UserInput {
 }
 
 /**
- * Matches UpdateUserDto — every field optional, plus status. Rol va parol
- * ATAYLAB yo'q (T-02): backend endi ularni bu endpointda 400 bilan rad etadi.
- * Rol — `assignRoles` (roles.assign), parol — `resetPassword`
- * (users.reset-password).
+ * Matches UpdateUserDto — every field optional, plus status. Rol, parol va
+ * schoolId/branchId ATAYLAB yo'q (T-02 + tenant izolyatsiya tuzatishi):
+ * backend endi ularni bu endpointda 400 bilan rad etadi. Rol — `assignRoles`
+ * (roles.assign), parol — `resetPassword` (users.reset-password), maktab
+ * ko'chirish — `reassignSchool` (users.reassign-school, faqat super-admin).
  */
-export type UserUpdateInput = Partial<Omit<UserInput, "role" | "roleNames" | "password">> & {
+export type UserUpdateInput = Partial<
+  Omit<UserInput, "role" | "roleNames" | "password" | "schoolId" | "branchId">
+> & {
   status?: UserStatus;
 };
+
+/** Matches ReassignSchoolDto — `PATCH /users/:id/school`, faqat super-admin. */
+export interface ReassignSchoolInput {
+  schoolId: string;
+  branchId?: string;
+}
 
 /** Create response — carries the one-time generated password for the credentials dialog. */
 export type CreatedUser = User & { generatedPassword: string };
@@ -156,6 +165,9 @@ const usersApi = {
       method: "POST",
       body: { password },
     });
+  },
+  reassignSchool(id: string, input: ReassignSchoolInput): Promise<User> {
+    return apiRequest<User>(`/users/${id}/school`, { method: "PATCH", body: input });
   },
 };
 
@@ -210,6 +222,16 @@ export function useResetPassword() {
   return useMutation({
     mutationFn: ({ id, password }: { id: string; password: string }) =>
       usersApi.resetPassword(id, password),
+  });
+}
+
+/** Foydalanuvchini boshqa maktab/filialga ko'chirish — alohida endpoint, faqat super-admin (`users.reassign-school`). */
+export function useReassignSchool() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ReassignSchoolInput }) =>
+      usersApi.reassignSchool(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
   });
 }
 
