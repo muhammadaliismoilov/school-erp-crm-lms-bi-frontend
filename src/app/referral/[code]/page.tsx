@@ -11,6 +11,7 @@ import {
 import { ApiError } from "@/lib/api/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { Field, Input } from "@/components/ui/input";
+import { isCompleteUzPhone, PhoneInput } from "@/components/ui/phone-input";
 
 const DEFAULT_THEME = "#22c55e";
 
@@ -41,7 +42,7 @@ export default function PublicReferralPage({ params }: { params: { code: string 
     e.preventDefault();
     setError(null);
     if (!form.firstName.trim()) return setError(t("referralPublic.err.firstName"));
-    if (!/^\+998\d{9}$/.test(form.phone.trim())) return setError(t("referralPublic.err.phone"));
+    if (!isCompleteUzPhone(form.phone.trim())) return setError(t("referralPublic.err.phone"));
 
     setSubmitting(true);
     try {
@@ -86,7 +87,7 @@ export default function PublicReferralPage({ params }: { params: { code: string 
         </Field>
       </div>
       <Field label={`${t("referralPublic.phone")} *`} htmlFor="r-phone">
-        <Input id="r-phone" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+998901234567" maxLength={13} />
+        <PhoneInput id="r-phone" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
       </Field>
 
       {/* Honeypot: hidden from humans; bots fill it and get silently dropped. */}

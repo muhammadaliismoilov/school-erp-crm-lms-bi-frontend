@@ -14,6 +14,7 @@ import { ApiError } from "@/lib/api/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { isCompleteUzPhone, PhoneInput } from "@/components/ui/phone-input";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -58,7 +59,7 @@ export default function PublicAppealPage({ params }: { params: { token: string }
     e.preventDefault();
     setError(null);
     if (!form.fullName.trim()) return setError(t("appeals.err.nameRequired"));
-    if (!/^\+998\d{9}$/.test(form.phone.trim())) return setError(t("appeals.err.phoneInvalid"));
+    if (!isCompleteUzPhone(form.phone.trim())) return setError(t("appeals.err.phoneInvalid"));
     if (!form.targetRole) return setError(t("appeals.err.roleRequired"));
     if (form.description.trim().length < 5) return setError(t("appeals.err.descriptionRequired"));
 
@@ -119,12 +120,10 @@ export default function PublicAppealPage({ params }: { params: { token: string }
                 />
               </Field>
               <Field label={`${t("appeals.f.phone")} *`} htmlFor="p-phone">
-                <Input
+                <PhoneInput
                   id="p-phone"
                   value={form.phone}
                   onChange={(e) => set("phone", e.target.value)}
-                  placeholder="+998901234567"
-                  maxLength={13}
                 />
               </Field>
             </div>

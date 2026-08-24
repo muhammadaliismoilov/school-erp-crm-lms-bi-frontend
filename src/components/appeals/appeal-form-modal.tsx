@@ -13,6 +13,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { isCompleteUzPhone, PhoneInput } from "@/components/ui/phone-input";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +56,7 @@ export function AppealFormModal({ open, onClose }: AppealFormModalProps) {
     setError(null);
 
     if (!form.fullName.trim()) return setError(t("appeals.err.nameRequired"));
-    if (!/^\+998\d{9}$/.test(form.phone.trim())) return setError(t("appeals.err.phoneInvalid"));
+    if (!isCompleteUzPhone(form.phone.trim())) return setError(t("appeals.err.phoneInvalid"));
     if (!form.targetRole) return setError(t("appeals.err.roleRequired"));
     if (form.description.trim().length < 5) return setError(t("appeals.err.descriptionRequired"));
 
@@ -112,12 +113,10 @@ export function AppealFormModal({ open, onClose }: AppealFormModalProps) {
               />
             </Field>
             <Field label={`${t("appeals.f.phone")} *`} htmlFor="a-phone">
-              <Input
+              <PhoneInput
                 id="a-phone"
                 value={form.phone}
                 onChange={(e) => set("phone", e.target.value)}
-                placeholder="+998901234567"
-                maxLength={13}
                 required
               />
             </Field>

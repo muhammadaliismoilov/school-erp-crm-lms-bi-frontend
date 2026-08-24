@@ -35,6 +35,7 @@ import { Badge, Spinner } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { PhoneInput, trimmedUzPhone, UZ_PHONE_PREFIX } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 import { Drawer } from "@/components/ui/drawer";
 import { PageHeader } from "@/components/ui/page-header";
@@ -335,7 +336,7 @@ function CandidateDrawer({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(UZ_PHONE_PREFIX);
   const [vacancyId, setVacancyId] = useState("");
   const [stage, setStage] = useState<CandidateStage>("new");
   const [recruiterId, setRecruiterId] = useState("");
@@ -348,7 +349,7 @@ function CandidateDrawer({
       setFirstName(editing.firstName);
       setLastName(editing.lastName);
       setEmail(editing.email);
-      setPhone(editing.phone ?? "");
+      setPhone(editing.phone ?? UZ_PHONE_PREFIX);
       setVacancyId(editing.vacancyId ?? "");
       setStage(editing.stage);
       setRecruiterId(editing.recruiterId ?? "");
@@ -357,7 +358,7 @@ function CandidateDrawer({
       setFirstName("");
       setLastName("");
       setEmail("");
-      setPhone("");
+      setPhone(UZ_PHONE_PREFIX);
       setVacancyId("");
       setStage("new");
       setRecruiterId("");
@@ -391,7 +392,7 @@ function CandidateDrawer({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.trim(),
-      phone: phone.trim() || undefined,
+      phone: trimmedUzPhone(phone),
       vacancyId: vacancyId || undefined,
       stage,
       recruiterId: recruiterId || undefined,
@@ -441,7 +442,7 @@ function CandidateDrawer({
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Emailni kiriting" />
         </Field>
         <Field label="Telefon">
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon raqamini kiriting" />
+          <PhoneInput value={phone} onChange={(e) => setPhone(e.target.value)} />
         </Field>
         <Field label="Vakansiya">
           <Select value={vacancyId} onChange={(e) => setVacancyId(e.target.value)} options={vacancyOptions} />

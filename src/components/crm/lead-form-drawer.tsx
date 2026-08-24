@@ -17,6 +17,7 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { Field, Input } from "@/components/ui/input";
+import { isCompleteUzPhone, PhoneInput, UZ_PHONE_PREFIX } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 
 interface Props {
@@ -39,7 +40,7 @@ export function LeadFormDrawer({ open, lead, onClose }: Props) {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(UZ_PHONE_PREFIX);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<LeadStatus>("new");
   const [sourceId, setSourceId] = useState("");
@@ -51,7 +52,7 @@ export function LeadFormDrawer({ open, lead, onClose }: Props) {
     if (!open) return;
     setFirstName(lead?.firstName ?? "");
     setLastName(lead?.lastName ?? "");
-    setPhone(lead?.phone ?? "+998");
+    setPhone(lead?.phone ?? UZ_PHONE_PREFIX);
     setEmail(lead?.email ?? "");
     setStatus(lead?.status ?? "new");
     setSourceId(lead?.source?.id ?? "");
@@ -82,7 +83,7 @@ export function LeadFormDrawer({ open, lead, onClose }: Props) {
     e.preventDefault();
     setError(null);
     if (!firstName.trim()) return setError(t("crm.err.firstName"));
-    if (!phone.trim()) return setError(t("crm.err.phone"));
+    if (!isCompleteUzPhone(phone.trim())) return setError(t("crm.err.phone"));
 
     const input: LeadInput = {
       firstName: firstName.trim(),
@@ -137,7 +138,7 @@ export function LeadFormDrawer({ open, lead, onClose }: Props) {
 
         <div className="grid grid-cols-2 gap-4">
           <Field label={t("crm.lead.phone")} htmlFor="lead-phone">
-            <Input id="lead-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+998901234567" />
+            <PhoneInput id="lead-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </Field>
           <Field label={t("crm.lead.email")} htmlFor="lead-email">
             <Input id="lead-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="parent@example.com" />

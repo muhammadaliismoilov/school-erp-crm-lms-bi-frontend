@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, Spinner } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { isCompleteUzPhone, PhoneInput, UZ_PHONE_PREFIX } from "@/components/ui/phone-input";
 import { Can } from "@/components/auth/can";
 import { PageHeader } from "@/components/ui/page-header";
 import { CredentialsModal } from "@/components/users/credentials-modal";
@@ -105,7 +106,7 @@ export default function StudentParentPage() {
   }
 
   // --- Yangi ota-ona yaratish ---
-  const EMPTY_NP = { firstName: "", lastName: "", phone: "", email: "", gender: "" };
+  const EMPTY_NP = { firstName: "", lastName: "", phone: UZ_PHONE_PREFIX, email: "", gender: "" };
   const [npOpen, setNpOpen] = useState(false);
   const [np, setNp] = useState(EMPTY_NP);
   const [npError, setNpError] = useState<string | null>(null);
@@ -130,8 +131,8 @@ export default function StudentParentPage() {
 
   async function submitNewParent() {
     setNpError(null);
-    if (!np.firstName.trim() || !np.phone.trim()) {
-      setNpError("Ism va telefon raqami majburiy");
+    if (!np.firstName.trim() || !isCompleteUzPhone(np.phone.trim())) {
+      setNpError("Ism va to'liq telefon raqami majburiy");
       return;
     }
     try {
@@ -303,10 +304,9 @@ export default function StudentParentPage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Telefon">
-              <Input
+              <PhoneInput
                 value={np.phone}
                 onChange={(e) => setNp((f) => ({ ...f, phone: e.target.value }))}
-                placeholder="+998901234567"
               />
             </Field>
             <Field label="Email (ixtiyoriy)">

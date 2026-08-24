@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Drawer } from "@/components/ui/drawer";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Field, Input } from "@/components/ui/input";
+import { isCompleteUzPhone, PhoneInput, trimmedUzPhone, UZ_PHONE_PREFIX } from "@/components/ui/phone-input";
 import { Select } from "@/components/ui/select";
 
 interface Props {
@@ -57,11 +58,11 @@ const EMPTY: FormState = {
   guardianRelation: "",
   guardianPassport: "",
   guardianJshshir: "",
-  guardianPhone: "+998",
+  guardianPhone: UZ_PHONE_PREFIX,
   region: "",
   district: "",
   address: "",
-  personalPhone: "",
+  personalPhone: UZ_PHONE_PREFIX,
 };
 
 const FORM_STATE_KEYS = Object.keys(EMPTY) as (keyof FormState)[];
@@ -132,8 +133,8 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
         ...EMPTY,
         firstName: lead.firstName ?? first ?? "",
         lastName: lead.lastName ?? rest.join(" ") ?? "",
-        personalPhone: lead.phone ?? "",
-        guardianPhone: lead.phone ?? "+998",
+        personalPhone: lead.phone ?? UZ_PHONE_PREFIX,
+        guardianPhone: lead.phone ?? UZ_PHONE_PREFIX,
       });
     }
     setError(null);
@@ -238,7 +239,7 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
     if (!f.birthCertificateSeries.trim() || !f.birthCertificateNumber.trim())
       return setError(t("enroll.err.cert"));
     if (!f.guardianFullName.trim()) return setError(t("enroll.err.guardianName"));
-    if (!f.guardianPhone.trim()) return setError(t("enroll.err.guardianPhone"));
+    if (!isCompleteUzPhone(f.guardianPhone.trim())) return setError(t("enroll.err.guardianPhone"));
 
     const input: EnrollStudentInput = {
       lastName: f.lastName.trim(),
@@ -260,7 +261,7 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
       ...(f.region.trim() ? { region: f.region.trim() } : {}),
       ...(f.district.trim() ? { district: f.district.trim() } : {}),
       ...(f.address.trim() ? { address: f.address.trim() } : {}),
-      ...(f.personalPhone.trim() ? { personalPhone: f.personalPhone.trim() } : {}),
+      ...(trimmedUzPhone(f.personalPhone) ? { personalPhone: trimmedUzPhone(f.personalPhone) } : {}),
     };
 
     try {
@@ -393,7 +394,7 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
               />
             </Field>
             <Field label={`${t("enroll.guardianPhone")} *`} htmlFor="en-gph">
-              <Input id="en-gph" value={f.guardianPhone} onChange={(e) => set("guardianPhone", e.target.value)} placeholder="+998901234567" />
+              <PhoneInput id="en-gph" value={f.guardianPhone} onChange={(e) => set("guardianPhone", e.target.value)} />
             </Field>
           </div>
         </section>
@@ -420,7 +421,7 @@ export function LeadEnrollDrawer({ open, lead, onClose, onEnrolled }: Props) {
         <section className="space-y-4">
           <SectionTitle>{t("enroll.section.contact")}</SectionTitle>
           <Field label={t("enroll.personalPhone")} htmlFor="en-pph">
-            <Input id="en-pph" value={f.personalPhone} onChange={(e) => set("personalPhone", e.target.value)} placeholder="+998 ## ### ## ##" />
+            <PhoneInput id="en-pph" value={f.personalPhone} onChange={(e) => set("personalPhone", e.target.value)} />
           </Field>
         </section>
 

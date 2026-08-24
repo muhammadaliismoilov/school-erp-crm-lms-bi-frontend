@@ -31,6 +31,7 @@ import { useRoles } from "@/lib/api/roles";
 import { latinToCyrillic } from "@/lib/transliterate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput, trimmedUzPhone, UZ_PHONE_PREFIX } from "@/components/ui/phone-input";
 import { Modal } from "@/components/ui/modal";
 import { NumberInput } from "@/components/ui/number-input";
 import { Select } from "@/components/ui/select";
@@ -71,7 +72,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   firstName: "", firstNameCyrillic: "", lastName: "", lastNameCyrillic: "",
-  middleName: "", middleNameCyrillic: "", email: "", phone: "", photoUrl: "", gender: "",
+  middleName: "", middleNameCyrillic: "", email: "", phone: UZ_PHONE_PREFIX, photoUrl: "", gender: "",
   birthDate: "", hireDate: "", passportSeries: "", pinfl: "", departmentId: "",
   positionId: "", roleName: "", salary: null, status: "active",
   qualificationCategory: "", qualificationDate: "", salaryChangeReason: "",
@@ -178,7 +179,7 @@ export function StaffFormModal({
         middleName: editing.middleName ?? "",
         middleNameCyrillic: editing.middleNameCyrillic ?? "",
         email: editing.email ?? "",
-        phone: editing.phone ?? "",
+        phone: editing.phone ?? UZ_PHONE_PREFIX,
         photoUrl: editing.photoUrl ?? "",
         gender: editing.gender ?? "",
         birthDate: editing.birthDate ?? "",
@@ -288,7 +289,7 @@ export function StaffFormModal({
       middleName: form.middleName.trim() || undefined,
       middleNameCyrillic: form.middleNameCyrillic.trim() || undefined,
       email: form.email.trim() || undefined,
-      phone: form.phone.trim() || undefined,
+      phone: trimmedUzPhone(form.phone),
       photoUrl: form.photoUrl.trim() || undefined,
       gender: form.gender || undefined,
       birthDate: form.birthDate || undefined,
@@ -427,7 +428,7 @@ export function StaffFormModal({
           <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="email@example.com" />
         </Field>
         <Field label="Telefon">
-          <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+998..." />
+          <PhoneInput value={form.phone} onChange={(e) => set("phone", e.target.value)} />
         </Field>
 
         <Field label="Jins" required>
