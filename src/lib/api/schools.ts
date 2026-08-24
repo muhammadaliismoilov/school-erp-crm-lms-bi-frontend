@@ -153,7 +153,16 @@ export function useCreateSchool() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: SchoolInput) => schoolsApi.create(input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: SCHOOLS_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: SCHOOLS_KEY });
+      // Alohida kesh nomfazosi (`lib/api/hr-branches.ts`ning
+      // `useSchoolOptions`) — foydalanuvchi shakllaridagi "Maktab"
+      // tanlagichi shu yerdan o'qiydi. Shu yerda ham invalidatsiya
+      // qilinmasa, yangi yaratilgan maktab o'sha tanlagichlarda darhol
+      // ko'rinmay qoladi (masalan, "Maktab yaratish" ustasining
+      // "direktor qo'shish" bosqichida).
+      qc.invalidateQueries({ queryKey: ["hr", "schools", "options"] });
+    },
   });
 }
 

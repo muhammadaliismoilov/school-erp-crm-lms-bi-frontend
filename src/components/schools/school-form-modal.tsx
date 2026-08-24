@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UserPlus } from "lucide-react";
 import {
   PAYMENT_PERIOD_UNITS,
   PAYMENT_START_STRATEGIES,
@@ -19,9 +19,11 @@ import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
+import { PhoneInput, trimmedUzPhone, UZ_PHONE_PREFIX } from "@/components/ui/phone-input";
 import { Modal } from "@/components/ui/modal";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { UserFormModal } from "@/components/users/user-form-modal";
 
 interface FormState {
   name: string;
@@ -55,7 +57,7 @@ const emptyForm: FormState = {
   websiteUrl: "",
   schoolType: "private",
   email: "",
-  phone: "",
+  phone: UZ_PHONE_PREFIX,
   totalCapacity: "",
   elementaryCapacity: "",
   upperCapacity: "",
@@ -78,7 +80,7 @@ function fromSchool(school: School): FormState {
     websiteUrl: school.websiteUrl ?? "",
     schoolType: school.schoolType,
     email: school.email ?? "",
-    phone: school.phone ?? "",
+    phone: school.phone ?? UZ_PHONE_PREFIX,
     totalCapacity: String(school.capacities.total ?? ""),
     elementaryCapacity: String(school.capacities.elementary ?? ""),
     upperCapacity: String(school.capacities.upper ?? ""),
@@ -107,13 +109,27 @@ export function SchoolFormModal({ open, onClose, school }: SchoolFormModalProps)
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
+  // Yaratish ustasining 2-bosqichi: maktab saqlangach, uni butunlay yopib
+  // qo'ymasdan, shu maktabning birinchi xodimi (direktor)ni ham hoziroq
+  // yaratishni taklif qilamiz — aks holda yangi maktabda hech kim
+  // (superadmindan boshqa) kira olmaydigan, "egasiz" holat qoladi.
+  const [createdSchool, setCreatedSchool] = useState<School | null>(null);
+  const [showDirectorForm, setShowDirectorForm] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(school ? fromSchool(school) : emptyForm);
       setError(null);
+      setCreatedSchool(null);
+      setShowDirectorForm(false);
     }
   }, [open, school]);
+
+  function finishWizard() {
+    setCreatedSchool(null);
+    setShowDirectorForm(false);
+    onClose();
+  }
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -182,7 +198,7 @@ export function SchoolFormModal({ open, onClose, school }: SchoolFormModalProps)
       websiteUrl: trimmed(form.websiteUrl),
       schoolType: form.schoolType,
       email: trimmed(form.email),
-      phone: trimmed(form.phone),
+      phone: trimmedUzPhone(form.phone),
       monthlyPayment: form.monthlyPayment ? Number(form.monthlyPayment) : 0,
       paymentStartStrategy: form.paymentStartStrategy,
       paymentPeriodUnit: form.paymentPeriodUnit,
@@ -216,10 +232,13 @@ export function SchoolFormModal({ open, onClose, school }: SchoolFormModalProps)
     try {
       if (school) {
         await update.mutateAsync({ id: school.id, input: payload });
+        onClose();
       } else {
-        await create.mutateAsync(payload);
+        const created = await create.mutateAsync(payload);
+        // Darhol yopmaymiz — ustaning 2-bosqichi (direktor yaratish taklifi)
+        // shu `created` maktab bo'yicha ko'rsatiladi.
+        setCreatedSchool(created);
       }
-      onClose();
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.localized(locale));
@@ -229,254 +248,291 @@ export function SchoolFormModal({ open, onClose, school }: SchoolFormModalProps)
     }
   }
 
+  // Usta, 2-bosqich: maktab endigina yaratildi — direktor yaratish taklif
+  // qilinadi ("tasdiqlash" oynasi), keyin xohlasa `UserFormModal`ga o'tadi
+  // (schoolId qulflangan holda). Uchala oyna ham har doim (shartsiz)
+  // qaytariladi va faqat o'zining `open` bayrog'i bilan ko'rsatiladi/
+  // yashiriladi — aks holda, masalan, direktor muvaffaqiyatli
+  // yaratilgach `UserFormModal` butunlay unmount bo'lib, uning ichidagi
+  // login/parolni ko'rsatuvchi `CredentialsModal` darhol yopilib qolar edi.
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={isEdit ? t("schools.edit") : t("schools.new")}
-      subtitle={isEdit ? form.name : t("schools.subtitle")}
-      footer={
-        <>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
-            {t("common.cancel")}
-          </Button>
-          <Button type="submit" form="school-form" loading={pending}>
-            {isEdit ? t("common.save") : t("schools.create")}
-          </Button>
-        </>
-      }
-    >
-      <form id="school-form" onSubmit={handleSubmit} className="space-y-7">
-        {/* Asosiy ma'lumotlar */}
-        <section className="space-y-4">
-          <h4 className="label">{t("schools.section.basic")}</h4>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={`${t("schools.f.name")} *`} htmlFor="s-name">
-              <Input
-                id="s-name"
-                value={form.name}
-                onChange={(e) => set("name", e.target.value)}
-                placeholder={t("schools.f.name")}
-                required
-                maxLength={160}
-              />
-            </Field>
-            <Field label={t("schools.f.legalName")} htmlFor="s-legal">
-              <Input
-                id="s-legal"
-                value={form.legalName}
-                onChange={(e) => set("legalName", e.target.value)}
-                maxLength={255}
-              />
-            </Field>
-            <Field label={t("schools.f.country")} htmlFor="s-country">
-              <Select
-                id="s-country"
-                value={form.country}
-                onChange={(e) => set("country", e.target.value)}
-                options={countryOptions}
-              />
-            </Field>
-            <Field label={t("schools.f.region")} htmlFor="s-region">
-              <Select
-                id="s-region"
-                value={form.region}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, region: e.target.value, district: "" }))
-                }
-                options={regionOptions}
-                placeholder={t("schools.placeholder.region")}
-              />
-            </Field>
-            <Field label={t("schools.f.district")} htmlFor="s-district">
-              <Select
-                id="s-district"
-                value={form.district}
-                onChange={(e) => set("district", e.target.value)}
-                options={districtOptions}
-                placeholder={t("schools.placeholder.district")}
-                disabled={!form.region}
-              />
-            </Field>
-            <Field label={t("schools.f.type")} htmlFor="s-type">
-              <Select
-                id="s-type"
-                value={form.schoolType}
-                onChange={(e) => set("schoolType", e.target.value as FormState["schoolType"])}
-                options={typeOptions}
-              />
-            </Field>
-            <Field label={t("schools.f.address")} htmlFor="s-address">
-              <Input
-                id="s-address"
-                value={form.address}
-                onChange={(e) => set("address", e.target.value)}
-                maxLength={255}
-              />
-            </Field>
-            <Field label={t("schools.f.website")} htmlFor="s-website">
-              <Input
-                id="s-website"
-                type="url"
-                value={form.websiteUrl}
-                onChange={(e) => set("websiteUrl", e.target.value)}
-                placeholder="https://"
-              />
-            </Field>
-          </div>
-        </section>
-
-        {/* Kontakt */}
-        <section className="space-y-4">
-          <h4 className="label">{t("schools.section.contact")}</h4>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("schools.f.email")} htmlFor="s-email">
-              <Input
-                id="s-email"
-                type="email"
-                value={form.email}
-                onChange={(e) => set("email", e.target.value)}
-              />
-            </Field>
-            <Field label={t("schools.f.phone")} htmlFor="s-phone">
-              <Input
-                id="s-phone"
-                value={form.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                placeholder="+998XXXXXXXXX"
-              />
-            </Field>
-          </div>
-        </section>
-
-        {/* Sig'im */}
-        <section className="space-y-4">
-          <h4 className="label">{t("schools.section.capacity")}</h4>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label={`${t("schools.f.totalCapacity")} *`} htmlFor="s-total">
-              <NumberInput
-                id="s-total"
-                value={form.totalCapacity}
-                onChange={(v) => set("totalCapacity", v == null ? "" : String(v))}
-              />
-            </Field>
-            <Field label={`${t("schools.f.elementaryCapacity")} *`} htmlFor="s-elem">
-              <NumberInput
-                id="s-elem"
-                value={form.elementaryCapacity}
-                onChange={(v) => set("elementaryCapacity", v == null ? "" : String(v))}
-              />
-            </Field>
-            <Field label={`${t("schools.f.upperCapacity")} *`} htmlFor="s-upper">
-              <NumberInput
-                id="s-upper"
-                value={form.upperCapacity}
-                onChange={(v) => set("upperCapacity", v == null ? "" : String(v))}
-              />
-            </Field>
-          </div>
-          {capacityMismatch && (
-            <p className="text-xs text-negative">{t("schools.err.capacityMismatch")}</p>
-          )}
-        </section>
-
-        {/* To'lov */}
-        <section className="space-y-4">
-          <h4 className="label">{t("schools.section.payment")}</h4>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t("schools.f.monthlyPayment")} htmlFor="s-pay">
-              <NumberInput
-                id="s-pay"
-                value={form.monthlyPayment}
-                onChange={(v) => set("monthlyPayment", v == null ? "" : String(v))}
-              />
-            </Field>
-            <Field label={t("schools.f.workDays")} htmlFor="s-workdays">
-              <Select
-                id="s-workdays"
-                value={form.workDays}
-                onChange={(e) => set("workDays", e.target.value as FormState["workDays"])}
-                options={workDaysOptions}
-              />
-            </Field>
-            <Field label={t("schools.f.paymentStart")} htmlFor="s-start">
-              <Select
-                id="s-start"
-                value={form.paymentStartStrategy}
-                onChange={(e) =>
-                  set("paymentStartStrategy", e.target.value as FormState["paymentStartStrategy"])
-                }
-                options={startOptions}
-              />
-            </Field>
-            <Field label={t("schools.f.paymentPeriod")} htmlFor="s-period">
-              <Select
-                id="s-period"
-                value={form.paymentPeriodUnit}
-                onChange={(e) =>
-                  set("paymentPeriodUnit", e.target.value as FormState["paymentPeriodUnit"])
-                }
-                options={periodOptions}
-              />
-            </Field>
-          </div>
-
-          <div className="flex items-start justify-between gap-4 rounded-lg border border-line bg-parchment/40 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium text-ink">{t("schools.f.separatePayments")}</p>
-              <p className="mt-0.5 text-xs text-ink-muted">{t("schools.f.separatePaymentsHint")}</p>
+    <>
+      <Modal
+        open={open && !createdSchool}
+        onClose={onClose}
+        title={isEdit ? t("schools.edit") : t("schools.new")}
+        subtitle={isEdit ? form.name : t("schools.subtitle")}
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" form="school-form" loading={pending}>
+              {isEdit ? t("common.save") : t("schools.create")}
+            </Button>
+          </>
+        }
+      >
+        <form id="school-form" onSubmit={handleSubmit} className="space-y-7">
+          {/* Asosiy ma'lumotlar */}
+          <section className="space-y-4">
+            <h4 className="label">{t("schools.section.basic")}</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={`${t("schools.f.name")} *`} htmlFor="s-name">
+                <Input
+                  id="s-name"
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  placeholder={t("schools.f.name")}
+                  required
+                  maxLength={160}
+                />
+              </Field>
+              <Field label={t("schools.f.legalName")} htmlFor="s-legal">
+                <Input
+                  id="s-legal"
+                  value={form.legalName}
+                  onChange={(e) => set("legalName", e.target.value)}
+                  maxLength={255}
+                />
+              </Field>
+              <Field label={t("schools.f.country")} htmlFor="s-country">
+                <Select
+                  id="s-country"
+                  value={form.country}
+                  onChange={(e) => set("country", e.target.value)}
+                  options={countryOptions}
+                />
+              </Field>
+              <Field label={t("schools.f.region")} htmlFor="s-region">
+                <Select
+                  id="s-region"
+                  value={form.region}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, region: e.target.value, district: "" }))
+                  }
+                  options={regionOptions}
+                  placeholder={t("schools.placeholder.region")}
+                />
+              </Field>
+              <Field label={t("schools.f.district")} htmlFor="s-district">
+                <Select
+                  id="s-district"
+                  value={form.district}
+                  onChange={(e) => set("district", e.target.value)}
+                  options={districtOptions}
+                  placeholder={t("schools.placeholder.district")}
+                  disabled={!form.region}
+                />
+              </Field>
+              <Field label={t("schools.f.type")} htmlFor="s-type">
+                <Select
+                  id="s-type"
+                  value={form.schoolType}
+                  onChange={(e) => set("schoolType", e.target.value as FormState["schoolType"])}
+                  options={typeOptions}
+                />
+              </Field>
+              <Field label={t("schools.f.address")} htmlFor="s-address">
+                <Input
+                  id="s-address"
+                  value={form.address}
+                  onChange={(e) => set("address", e.target.value)}
+                  maxLength={255}
+                />
+              </Field>
+              <Field label={t("schools.f.website")} htmlFor="s-website">
+                <Input
+                  id="s-website"
+                  type="url"
+                  value={form.websiteUrl}
+                  onChange={(e) => set("websiteUrl", e.target.value)}
+                  placeholder="https://"
+                />
+              </Field>
             </div>
-            <Switch
-              checked={form.separateGroupPayments}
-              onCheckedChange={(v) => set("separateGroupPayments", v)}
-              aria-label={t("schools.f.separatePayments")}
-            />
-          </div>
+          </section>
 
-          {form.separateGroupPayments && (
-            <div className="space-y-3">
-              {form.groupMonthlyPayments.map((group, i) => (
-                <div key={i} className="flex items-end gap-3">
-                  <Field label={t("schools.f.groupName")} htmlFor={`g-name-${i}`}>
-                    <Input
-                      id={`g-name-${i}`}
-                      value={group.groupName}
-                      onChange={(e) => updateGroup(i, { groupName: e.target.value })}
-                      maxLength={20}
-                      placeholder="1A"
-                    />
-                  </Field>
-                  <Field label={t("schools.f.groupAmount")} htmlFor={`g-amount-${i}`}>
-                    <NumberInput
-                      id={`g-amount-${i}`}
-                      value={group.amount || ""}
-                      onChange={(v) => updateGroup(i, { amount: v ?? 0 })}
-                    />
-                  </Field>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeGroup(i)}
-                    aria-label={t("common.delete")}
-                    className="mb-1.5 text-negative"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button type="button" variant="secondary" size="sm" onClick={addGroup}>
-                <Plus className="h-4 w-4" />
-                {t("schools.addGroup")}
-              </Button>
+          {/* Kontakt */}
+          <section className="space-y-4">
+            <h4 className="label">{t("schools.section.contact")}</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("schools.f.email")} htmlFor="s-email">
+                <Input
+                  id="s-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => set("email", e.target.value)}
+                />
+              </Field>
+              <Field label={t("schools.f.phone")} htmlFor="s-phone">
+                <PhoneInput
+                  id="s-phone"
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                />
+              </Field>
             </div>
-          )}
-        </section>
+          </section>
 
-        {error && (
-          <p className="rounded-lg bg-negative/10 px-3 py-2 text-sm text-negative">{error}</p>
-        )}
-      </form>
-    </Modal>
+          {/* Sig'im */}
+          <section className="space-y-4">
+            <h4 className="label">{t("schools.section.capacity")}</h4>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label={`${t("schools.f.totalCapacity")} *`} htmlFor="s-total">
+                <NumberInput
+                  id="s-total"
+                  value={form.totalCapacity}
+                  onChange={(v) => set("totalCapacity", v == null ? "" : String(v))}
+                />
+              </Field>
+              <Field label={`${t("schools.f.elementaryCapacity")} *`} htmlFor="s-elem">
+                <NumberInput
+                  id="s-elem"
+                  value={form.elementaryCapacity}
+                  onChange={(v) => set("elementaryCapacity", v == null ? "" : String(v))}
+                />
+              </Field>
+              <Field label={`${t("schools.f.upperCapacity")} *`} htmlFor="s-upper">
+                <NumberInput
+                  id="s-upper"
+                  value={form.upperCapacity}
+                  onChange={(v) => set("upperCapacity", v == null ? "" : String(v))}
+                />
+              </Field>
+            </div>
+            {capacityMismatch && (
+              <p className="text-xs text-negative">{t("schools.err.capacityMismatch")}</p>
+            )}
+          </section>
+
+          {/* To'lov */}
+          <section className="space-y-4">
+            <h4 className="label">{t("schools.section.payment")}</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={t("schools.f.monthlyPayment")} htmlFor="s-pay">
+                <NumberInput
+                  id="s-pay"
+                  value={form.monthlyPayment}
+                  onChange={(v) => set("monthlyPayment", v == null ? "" : String(v))}
+                />
+              </Field>
+              <Field label={t("schools.f.workDays")} htmlFor="s-workdays">
+                <Select
+                  id="s-workdays"
+                  value={form.workDays}
+                  onChange={(e) => set("workDays", e.target.value as FormState["workDays"])}
+                  options={workDaysOptions}
+                />
+              </Field>
+              <Field label={t("schools.f.paymentStart")} htmlFor="s-start">
+                <Select
+                  id="s-start"
+                  value={form.paymentStartStrategy}
+                  onChange={(e) =>
+                    set("paymentStartStrategy", e.target.value as FormState["paymentStartStrategy"])
+                  }
+                  options={startOptions}
+                />
+              </Field>
+              <Field label={t("schools.f.paymentPeriod")} htmlFor="s-period">
+                <Select
+                  id="s-period"
+                  value={form.paymentPeriodUnit}
+                  onChange={(e) =>
+                    set("paymentPeriodUnit", e.target.value as FormState["paymentPeriodUnit"])
+                  }
+                  options={periodOptions}
+                />
+              </Field>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 rounded-lg border border-line bg-parchment/40 px-4 py-3">
+              <div>
+                <p className="text-sm font-medium text-ink">{t("schools.f.separatePayments")}</p>
+                <p className="mt-0.5 text-xs text-ink-muted">{t("schools.f.separatePaymentsHint")}</p>
+              </div>
+              <Switch
+                checked={form.separateGroupPayments}
+                onCheckedChange={(v) => set("separateGroupPayments", v)}
+                aria-label={t("schools.f.separatePayments")}
+              />
+            </div>
+
+            {form.separateGroupPayments && (
+              <div className="space-y-3">
+                {form.groupMonthlyPayments.map((group, i) => (
+                  <div key={i} className="flex items-end gap-3">
+                    <Field label={t("schools.f.groupName")} htmlFor={`g-name-${i}`}>
+                      <Input
+                        id={`g-name-${i}`}
+                        value={group.groupName}
+                        onChange={(e) => updateGroup(i, { groupName: e.target.value })}
+                        maxLength={20}
+                        placeholder="1A"
+                      />
+                    </Field>
+                    <Field label={t("schools.f.groupAmount")} htmlFor={`g-amount-${i}`}>
+                      <NumberInput
+                        id={`g-amount-${i}`}
+                        value={group.amount || ""}
+                        onChange={(v) => updateGroup(i, { amount: v ?? 0 })}
+                      />
+                    </Field>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeGroup(i)}
+                      aria-label={t("common.delete")}
+                      className="mb-1.5 text-negative"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" variant="secondary" size="sm" onClick={addGroup}>
+                  <Plus className="h-4 w-4" />
+                  {t("schools.addGroup")}
+                </Button>
+              </div>
+            )}
+          </section>
+
+          {error && (
+            <p className="rounded-lg bg-negative/10 px-3 py-2 text-sm text-negative">{error}</p>
+          )}
+        </form>
+      </Modal>
+
+      <Modal
+        open={open && Boolean(createdSchool) && !showDirectorForm}
+        onClose={finishWizard}
+        title={t("schools.wizard.title")}
+        subtitle={createdSchool?.name}
+        size="md"
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={finishWizard}>
+              {t("schools.wizard.skip")}
+            </Button>
+            <Button type="button" onClick={() => setShowDirectorForm(true)}>
+              <UserPlus className="h-4 w-4" />
+              {t("schools.wizard.createDirector")}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-muted">{t("schools.wizard.body")}</p>
+      </Modal>
+
+      <UserFormModal
+        open={open && Boolean(createdSchool) && showDirectorForm}
+        onClose={finishWizard}
+        defaultSchoolId={createdSchool?.id}
+        defaultRoleName="director"
+        lockSchool
+      />
+    </>
   );
 }

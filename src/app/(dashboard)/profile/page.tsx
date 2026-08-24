@@ -219,7 +219,7 @@ export default function ProfilePage() {
               >
                 <Input
                   id="firstNameCyrillic"
-                  {...register("firstNameCyrillic", { required: true })}
+                  {...register("firstNameCyrillic")}
                 />
               </Field>
               <Field
@@ -229,7 +229,7 @@ export default function ProfilePage() {
               >
                 <Input
                   id="lastNameCyrillic"
-                  {...register("lastNameCyrillic", { required: true })}
+                  {...register("lastNameCyrillic")}
                 />
               </Field>
               <Field label="Otasining ismi (kirill)" htmlFor="middleNameCyrillic">

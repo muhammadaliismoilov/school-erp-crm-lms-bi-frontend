@@ -25,6 +25,7 @@ import { ApiError } from "@/lib/api/types";
 import { useI18n } from "@/lib/i18n/provider";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { PhoneInput, trimmedUzPhone, UZ_PHONE_PREFIX } from "@/components/ui/phone-input";
 import { DateInput } from "@/components/ui/date-input";
 import { Modal } from "@/components/ui/modal";
 import { Select, type SelectOption } from "@/components/ui/select";
@@ -61,7 +62,7 @@ const emptyForm: FormState = {
   birthDate: "",
   documentNumber: "",
   gender: "male",
-  phone: "",
+  phone: UZ_PHONE_PREFIX,
   roleName: "",
   pinfl: "",
   workplace: "",
@@ -87,7 +88,7 @@ function fromUser(user: User): FormState {
     birthDate: user.birthDate ?? "",
     documentNumber: user.documentNumber ?? "",
     gender: user.gender ?? "male",
-    phone: user.phone ?? "",
+    phone: user.phone ?? UZ_PHONE_PREFIX,
     roleName: roleOf(user),
     pinfl: user.pinfl ?? "",
     workplace: user.workplace ?? "",
@@ -107,9 +108,21 @@ interface UserFormModalProps {
   defaultRoleName?: string;
   /** Disable the role selector — used by role-scoped pages (parents, teachers…). */
   lockRole?: boolean;
+  /** Preselect this school when creating — e.g. the school-creation wizard's "add a director" step. */
+  defaultSchoolId?: string;
+  /** Disable the school selector — used together with `defaultSchoolId` so the new user can't accidentally be attached to a different school. */
+  lockSchool?: boolean;
 }
 
-export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }: UserFormModalProps) {
+export function UserFormModal({
+  open,
+  onClose,
+  user,
+  defaultRoleName,
+  lockRole,
+  defaultSchoolId,
+  lockSchool,
+}: UserFormModalProps) {
   const { t, locale } = useI18n();
   const isEdit = Boolean(user);
   const create = useCreateUser();
@@ -140,7 +153,11 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
 
   useEffect(() => {
     if (open) {
-      setForm(user ? fromUser(user) : emptyForm);
+      setForm(
+        user
+          ? fromUser(user)
+          : { ...emptyForm, schoolId: defaultSchoolId ?? emptyForm.schoolId },
+      );
       setError(null);
       setAvatarError(null);
       setPassword("");
@@ -150,7 +167,7 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
       setLoginError(null);
       setLoginSaved(false);
     }
-  }, [open, user]);
+  }, [open, user, defaultSchoolId]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -233,15 +250,15 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
     };
     return {
       firstName: form.firstName.trim(),
-      firstNameCyrillic: form.firstNameCyrillic.trim(),
+      firstNameCyrillic: trimmed(form.firstNameCyrillic),
       lastName: form.lastName.trim(),
-      lastNameCyrillic: form.lastNameCyrillic.trim(),
+      lastNameCyrillic: trimmed(form.lastNameCyrillic),
       middleName: trimmed(form.middleName),
       middleNameCyrillic: trimmed(form.middleNameCyrillic),
       birthDate: trimmed(form.birthDate),
       documentNumber: trimmed(form.documentNumber),
       gender: form.gender,
-      phone: trimmed(form.phone),
+      phone: trimmedUzPhone(form.phone),
       pinfl: trimmed(form.pinfl),
       workplace: trimmed(form.workplace),
       profileImageUrl: form.profileImageUrl,
@@ -255,12 +272,7 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
     e.preventDefault();
     setError(null);
 
-    if (
-      !form.firstName.trim() ||
-      !form.firstNameCyrillic.trim() ||
-      !form.lastName.trim() ||
-      !form.lastNameCyrillic.trim()
-    ) {
+    if (!form.firstName.trim() || !form.lastName.trim()) {
       setError(t("users.err.nameRequired"));
       return;
     }
@@ -450,13 +462,12 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
                 maxLength={80}
               />
             </Field>
-            <Field label={`${t("users.f.firstNameCyrillic")} *`} htmlFor="u-first-cyr">
+            <Field label={t("users.f.firstNameCyrillic")} htmlFor="u-first-cyr">
               <Input
                 id="u-first-cyr"
                 value={form.firstNameCyrillic}
                 onChange={(e) => set("firstNameCyrillic", e.target.value)}
                 placeholder={t("users.f.firstNameCyrillic")}
-                required
                 maxLength={80}
               />
             </Field>
@@ -470,13 +481,12 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
                 maxLength={80}
               />
             </Field>
-            <Field label={`${t("users.f.lastNameCyrillic")} *`} htmlFor="u-last-cyr">
+            <Field label={t("users.f.lastNameCyrillic")} htmlFor="u-last-cyr">
               <Input
                 id="u-last-cyr"
                 value={form.lastNameCyrillic}
                 onChange={(e) => set("lastNameCyrillic", e.target.value)}
                 placeholder={t("users.f.lastNameCyrillic")}
-                required
                 maxLength={80}
               />
             </Field>
@@ -543,12 +553,10 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
               </div>
             </Field>
             <Field label={t("users.f.phone")} htmlFor="u-phone">
-              <Input
+              <PhoneInput
                 id="u-phone"
                 value={form.phone}
                 onChange={(e) => set("phone", e.target.value)}
-                placeholder="+998901234567"
-                maxLength={13}
               />
             </Field>
           </div>
@@ -608,6 +616,7 @@ export function UserFormModal({ open, onClose, user, defaultRoleName, lockRole }
                   value={form.schoolId}
                   onChange={(e) => set("schoolId", e.target.value)}
                   options={schoolOptions}
+                  disabled={lockSchool}
                 />
               </Field>
               <Field label="Filial" htmlFor="u-branch">

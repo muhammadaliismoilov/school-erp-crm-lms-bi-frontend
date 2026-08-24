@@ -101,9 +101,9 @@ export interface UserInput {
   schoolId?: string | null;
   branchId?: string | null;
   firstName: string;
-  firstNameCyrillic: string;
+  firstNameCyrillic?: string;
   lastName: string;
-  lastNameCyrillic: string;
+  lastNameCyrillic?: string;
   middleName?: string;
   middleNameCyrillic?: string;
   birthDate?: string;
