@@ -37,6 +37,7 @@ const KNOWN_ACTIONS = new Set([
   "delete",
   "upload",
   "assign",
+  "manage-privileged",
   "reconcile",
   "reset-password",
   "reassign-school",

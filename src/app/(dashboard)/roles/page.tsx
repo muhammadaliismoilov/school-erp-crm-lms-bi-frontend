@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Pencil, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { KeyRound, Lock, Pencil, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useDeleteRole, useRoles, type Role } from "@/lib/api/roles";
 import { ApiError } from "@/lib/api/types";
 import { useI18n } from "@/lib/i18n/provider";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
 import { Can } from "@/components/auth/can";
+import { useCan } from "@/lib/auth/use-can";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
@@ -79,6 +80,10 @@ export default function RolesPage() {
     search: search || undefined,
   });
   const removeRole = useDeleteRole();
+  const can = useCan();
+  // Himoyalangan rol (direktor, CEO): faqat shu ruxsatga ega aktor
+  // tahrirlashi/o'chirishi mumkin — qolganlar uchun amallar yashiriladi.
+  const canManagePrivileged = can("roles.manage-privileged");
 
   const openCreate = () => {
     setEditing(null);
@@ -106,6 +111,7 @@ export default function RolesPage() {
       label: t("common.edit"),
       icon: Pencil,
       permission: "roles.update",
+      hidden: (r) => r.isPrivileged && !canManagePrivileged,
       onSelect: openEdit,
     },
     {
@@ -114,7 +120,7 @@ export default function RolesPage() {
       icon: Trash2,
       tone: "danger",
       permission: "roles.delete",
-      hidden: (r) => r.isSystem,
+      hidden: (r) => r.isSystem || (r.isPrivileged && !canManagePrivileged),
       onSelect: setDeleting,
     },
   ];
@@ -138,7 +144,14 @@ export default function RolesPage() {
             <ShieldCheck className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <p className="truncate font-medium text-ink">{r.displayName}</p>
+            <p className="flex items-center gap-1.5 truncate font-medium text-ink">
+              {r.displayName}
+              {r.isPrivileged && (
+                <span title={t("roles.privileged.hint")}>
+                  <Lock className="h-3.5 w-3.5 shrink-0 text-ink-muted" aria-label={t("roles.privileged")} />
+                </span>
+              )}
+            </p>
             <p className="truncate text-xs text-ink-muted">{r.title}</p>
           </div>
         </div>

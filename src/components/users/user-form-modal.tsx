@@ -137,6 +137,10 @@ export function UserFormModal({
   const canAssignRole = can("roles.assign");
   const canResetPassword = can("users.reset-password");
   const canReassignSchool = can("users.reassign-school");
+  // Himoyalangan rol (direktor, CEO): shu ruxsat yo'q aktor birovni director/CEO
+  // qilib TAYINLAY olmaydi — tanlovda ko'rinmaydi (mavjud tayinlangan rol bundan
+  // mustasno, aks holda tahrirlashda maydon bo'sh ko'rinib qolardi).
+  const canManagePrivileged = can("roles.manage-privileged");
   const pending = create.isPending || update.isPending || assignRoles.isPending || reassignSchool.isPending;
 
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -208,9 +212,13 @@ export function UserFormModal({
     `${form.firstName[0] ?? ""}${form.lastName[0] ?? ""}`.toUpperCase() || "?";
 
   const roles = useRoles({ limit: 100 });
+  const currentRoleName = user ? roleOf(user) : undefined;
   const roleOptions: SelectOption[] = useMemo(
-    () => (roles.data?.items ?? []).map((r) => ({ value: r.name, label: r.displayName || r.name })),
-    [roles.data],
+    () =>
+      (roles.data?.items ?? [])
+        .filter((r) => !r.isPrivileged || canManagePrivileged || r.name === currentRoleName)
+        .map((r) => ({ value: r.name, label: r.displayName || r.name })),
+    [roles.data, canManagePrivileged, currentRoleName],
   );
 
   // Maktab / filial — ko'p-maktabli ajratish uchun foydalanuvchiga biriktiriladi.

@@ -29,6 +29,8 @@ export interface Role {
   title: string;
   description?: string | null;
   isSystem: boolean;
+  /** Himoyalangan rol (direktor, CEO) — faqat `roles.manage-privileged` egasi tahrirlaydi/tayinlaydi. */
+  isPrivileged: boolean;
   dataScope: DataScope;
   permissionCount: number;
   permissions: RolePermission[];
