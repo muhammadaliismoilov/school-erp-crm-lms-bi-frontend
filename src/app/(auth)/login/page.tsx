@@ -3,10 +3,13 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { ArrowRight, Info, ShieldCheck } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, Info, School, ShieldCheck } from "lucide-react";
 import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { ApiError } from "@/lib/api/types";
+import { resolveSchoolByHostname } from "@/lib/api/public-schools";
+import { isAdminHostname, isTenantBypassHostname } from "@/lib/tenant/hostname";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
@@ -24,6 +27,33 @@ export default function LoginPage() {
   );
 }
 
+/**
+ * Real maktab subdomenida (masalan elegantschool.crm.uz) login sahifasini
+ * o'sha maktabga moslab (nom/logo) ko'rsatish uchun hostname'ni resolve
+ * qiladi. `admin.*` va hozirgi Vercel manzilida (bypass) chaqirilmaydi —
+ * u yerda umumiy brendlash o'zgarishsiz qoladi.
+ */
+function useTenantSchool() {
+  const [hostname, setHostname] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHostname(window.location.hostname);
+  }, []);
+
+  const isTenantSubdomain =
+    hostname !== null && !isAdminHostname(hostname) && !isTenantBypassHostname(hostname);
+
+  const query = useQuery({
+    queryKey: ["public-school-resolve", hostname],
+    queryFn: () => resolveSchoolByHostname(hostname as string),
+    enabled: isTenantSubdomain,
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+
+  return { isTenantSubdomain, query };
+}
+
 function LoginPageContent() {
   const { t, locale } = useI18n();
   const router = useRouter();
@@ -37,6 +67,7 @@ function LoginPageContent() {
   const [twoFactorToken, setTwoFactorToken] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const { isTenantSubdomain, query: schoolQuery } = useTenantSchool();
 
   const {
     register,
@@ -81,16 +112,45 @@ function LoginPageContent() {
     }
   }
 
+  if (isTenantSubdomain && schoolQuery.isError) {
+    return (
+      <main className="grid min-h-screen place-items-center px-6">
+        <div className="max-w-sm text-center">
+          <School className="mx-auto h-10 w-10 text-ink-muted" />
+          <h1 className="mt-4 font-display text-2xl font-bold text-ink">
+            {t("auth.schoolNotFound.title")}
+          </h1>
+          <p className="mt-2 text-sm text-ink-muted">{t("auth.schoolNotFound.description")}</p>
+        </div>
+      </main>
+    );
+  }
+
+  // Faqat real maktab subdomenida (masalan elegantschool.crm.uz) rezolyutsiya
+  // qilinadi — `admin.*`/bypass manzillarida umumiy brendlash saqlanadi.
+  const resolvedSchool = isTenantSubdomain ? schoolQuery.data : undefined;
+  const brandName = resolvedSchool?.schoolName ?? "School Console";
+  const brandLogo = resolvedSchool?.logoUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element -- tashqi maktab logotipi, next/image domen ro'yxati sozlanmagan
+    <img
+      src={resolvedSchool.logoUrl}
+      alt=""
+      className="h-11 w-11 shrink-0 rounded-xl object-cover"
+    />
+  ) : (
+    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent font-display text-xl font-extrabold text-accent-fg">
+      {brandName.charAt(0).toUpperCase()}
+    </span>
+  );
+
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
       {/* Brand panel */}
       <section className="bg-navy-texture relative hidden flex-col justify-between p-12 lg:flex">
         <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent font-display text-xl font-extrabold text-accent-fg">
-            S
-          </span>
+          {brandLogo}
           <span className="font-display text-xl font-bold tracking-tight text-paper">
-            School Console
+            {brandName}
           </span>
         </div>
         <div className="max-w-md">
@@ -110,13 +170,9 @@ function LoginPageContent() {
           <LanguageSwitcher />
         </div>
         <div className="stagger w-full max-w-sm">
-          <div className="mb-8 lg:hidden">
-            <span className="grid h-11 w-11 place-items-center rounded-xl bg-accent font-display text-xl font-extrabold text-accent-fg">
-              Y
-            </span>
-          </div>
+          <div className="mb-8 lg:hidden">{brandLogo}</div>
           <h1 className="font-display text-3xl font-bold tracking-tight text-ink">
-            {t("auth.title")}
+            {resolvedSchool?.schoolName ?? t("auth.title")}
           </h1>
           <p className="mt-2 text-sm text-ink-muted">{t("auth.subtitle")}</p>
 

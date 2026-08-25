@@ -57,6 +57,16 @@ export function setAuthFailureHandler(handler: () => void): void {
   onAuthFailure = handler;
 }
 
+/**
+ * Joriy subdomain (masalan `elegantschool.crm.uz`) — backend `auth.service`
+ * login vaqtida foydalanuvchining o'z maktabiga tegishli ekanini shu orqali
+ * tekshiradi. `window.location.hostname` port'siz keladi, shuning uchun
+ * qo'shimcha tozalash kerak emas.
+ */
+function getTenantHostname(): string | null {
+  return typeof window !== "undefined" ? window.location.hostname : null;
+}
+
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
@@ -134,6 +144,8 @@ export async function apiRequest<T>(
   }
   if (activeBranchId) headers["X-Branch-Id"] = activeBranchId;
   if (activeSchoolId) headers["X-School-Id"] = activeSchoolId;
+  const tenantHostname = getTenantHostname();
+  if (tenantHostname) headers["X-Tenant-Subdomain"] = tenantHostname;
 
   const res = await fetch(buildUrl(path, query), {
     method,
