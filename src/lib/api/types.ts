@@ -54,6 +54,15 @@ export interface AuthenticatedUser {
   roles: string[];
   permissions: string[];
   sessionId?: string;
+  /**
+   * Foydalanuvchi qaysi maktabga bog'langan. `null` — global hisob (barcha
+   * maktablarni ko'radi, `X-School-Id` bilan istalganiga kiradi): super-admin
+   * va global CEO shunday. Eski sessiyalarda maydon umuman bo'lmasligi mumkin,
+   * shuning uchun `undefined`ni `null` bilan ADASHTIRMANG — `=== null` tekshiring.
+   */
+  schoolId?: string | null;
+  branchId?: string | null;
+  dataScope?: string | null;
 }
 
 export interface AuthTokens {

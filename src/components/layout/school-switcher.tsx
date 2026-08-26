@@ -6,19 +6,29 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/auth/store";
 import { useSchoolOptions } from "@/lib/api/hr-branches";
 import { getActiveSchool, setActiveSchool } from "@/lib/api/client";
-import { isAdminHostname, isTenantBypassHostname } from "@/lib/tenant/hostname";
+import { isGlobalAccount, isSchoolSwitchableHost } from "@/lib/tenant/school-scope";
 
 /**
- * Global (super-admin) foydalanuvchi uchun maktab tanlagich. Tanlaganda barcha
- * so'rovlarga `X-School-Id` yuboriladi va cache tozalanadi — faqat shu maktab
- * ma'lumoti chiqadi. Maktabga bog'langan oddiy user uchun ko'rinmaydi (backend
- * baribir o'z maktabiga qadaydi). Real maktab subdomenida (masalan
- * elegantschool.crm.uz) superadmin ham ko'ra olmaydi — u yerda hisob shu
- * maktabga qulflangan; faqat `admin.*` va hozirgi Vercel manzilida chiqadi.
+ * GLOBAL foydalanuvchi uchun maktab tanlagich. Tanlaganda barcha so'rovlarga
+ * `X-School-Id` yuboriladi va cache tozalanadi — faqat shu maktab ma'lumoti
+ * chiqadi. Maktabga bog'langan oddiy user uchun ko'rinmaydi (backend baribir
+ * o'z maktabiga qadaydi).
+ *
+ * KIM KO'RADI: mezon ROL EMAS, balki hisobning maktabga bog'lanmaganligi
+ * (`schoolId === null`). Ilgari `roles.includes("super-admin")` edi va shu
+ * sababli global CEO (`ceo` roli, `schoolId=null`) tanlagichni ko'rmasdi —
+ * holbuki u aynan barcha maktablar ustidan ishlashi kerak. `super-admin` roli
+ * zaxira sifatida qoldi: eski sessiyalar token'ida `schoolId` bo'lmasligi
+ * mumkin (o'shanda maydon `undefined`, `null` emas).
+ *
+ * QAYERDA CHIQADI: real maktab subdomenida (masalan elegantschool.crm.uz)
+ * ATAYLAB chiqmaydi — u yerda sirt bitta maktabga qulflangan. Ko'rinadigan
+ * joylar: `admin.*` sirti, apex domen (`crm.uz`) va lokal `localhost`, hamda
+ * hozirgi Vercel manzillari (DNS ko'chishi yakunlanmaguncha).
  */
 export function SchoolSwitcher() {
-  const roles = useAuthStore((s) => s.user?.roles ?? []);
-  const isGlobal = roles.includes("super-admin");
+  const user = useAuthStore((s) => s.user);
+  const isGlobal = isGlobalAccount(user);
   const qc = useQueryClient();
   const options = useSchoolOptions();
   const [value, setValue] = useState<string>(() => getActiveSchool() ?? "");
@@ -26,7 +36,7 @@ export function SchoolSwitcher() {
 
   useEffect(() => {
     const hostname = window.location.hostname;
-    setAllowedHost(isAdminHostname(hostname) || isTenantBypassHostname(hostname));
+    setAllowedHost(isSchoolSwitchableHost(hostname));
   }, []);
 
   if (!isGlobal || !allowedHost) return null;
