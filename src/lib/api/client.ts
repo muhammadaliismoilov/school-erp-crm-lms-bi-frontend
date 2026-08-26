@@ -155,7 +155,11 @@ export async function apiRequest<T>(
     cache: "no-store",
   });
 
-  if (res.status === 401 && auth && retryOnUnauthorized) {
+  // 431 = Request Header Fields Too Large. Deploydan oldin berilgan tokenlar
+  // ichida 439 tagacha ruxsat bo'lgan (15 KB) — ular 16 KB sarlavha limitidan
+  // oshadi va har bir so'rov shu xato bilan yiqiladi. Token yangilansa yangi,
+  // kichik token keladi va sessiya qaytadan kirmasdan tuzaladi.
+  if ((res.status === 401 || res.status === 431) && auth && retryOnUnauthorized) {
     const refreshed = await refreshTokens();
     if (refreshed) {
       return apiRequest<T>(path, { ...options, retryOnUnauthorized: false });
