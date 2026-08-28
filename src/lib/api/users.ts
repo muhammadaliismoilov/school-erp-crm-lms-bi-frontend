@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { apiRequest } from "./client";
+import { apiRequest, getActiveSchool } from "./client";
 
 /** Mirrors backend UserGender in src/modules/users/enums/user.enums.ts. */
 export const USER_GENDERS = ["male", "female"] as const;
@@ -62,9 +62,25 @@ export interface User {
 }
 
 export interface UserStats {
-  userCount: number;
-  roleCount: number;
+  /**
+   * Login hisoblari (aktiv maktab bo'yicha). O'quvchilar KIRMAYDI — ularda
+   * login hisobi yo'q, ular alohida jadvalda.
+   */
+  accountCount: number;
+  /** O'quvchilar soni. `accountCount` bilan KESISHMAYDI. */
+  studentCount: number;
+  /** Oxirgi 30 kunda kamida bir marta kirgan hisoblar. */
+  activeCount: number;
   pageCount: number;
+}
+
+/** Maktablar bo'yicha kesim qatori (faqat global hisobda ko'p qator bo'ladi). */
+export interface SchoolUserBreakdownRow {
+  schoolId: string | null;
+  name: string;
+  accounts: number;
+  students: number;
+  active: number;
 }
 
 export interface UserPageMeta {
@@ -240,5 +256,20 @@ export function useDeleteUser() {
   return useMutation({
     mutationFn: (id: string) => usersApi.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
+  });
+}
+
+/**
+ * Maktablar bo'yicha foydalanuvchi kesimi.
+ *
+ * Backend scoping'i ro'yxat bilan bir xil: global hisob barcha qatorlarni,
+ * maktabga bog'langan foydalanuvchi faqat o'zinikini oladi. Kalitga aktiv
+ * maktab kiritilgan — tanlagichdan almashtirilsa qayta so'raladi.
+ */
+export function useUsersBySchool() {
+  return useQuery({
+    queryKey: [...USERS_KEY, "by-school", getActiveSchool()],
+    queryFn: () => apiRequest<SchoolUserBreakdownRow[]>("/users/by-school"),
+    staleTime: 30_000,
   });
 }

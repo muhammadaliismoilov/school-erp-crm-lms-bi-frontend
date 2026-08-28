@@ -40,12 +40,28 @@ export function getActiveBranch(): string | null {
  */
 let activeSchoolId: string | null =
   typeof localStorage !== "undefined" ? localStorage.getItem("activeSchoolId") : null;
+/**
+ * Aktiv maktab o'zgarishiga obunachilar.
+ *
+ * NEGA: maktabni ikki joydan almashtirish mumkin — yuqoridagi tanlagich va
+ * Foydalanuvchilar sahifasidagi maktab kesimi. Tanlagich o'z holatini
+ * `useState` da ushlaydi, ya'ni kesimdan almashtirilganda yorlig'i eskirib
+ * qolardi: ma'lumot Elegant'niki, yozuv esa "Barcha maktablar".
+ */
+const activeSchoolListeners = new Set<() => void>();
+
+export function subscribeActiveSchool(listener: () => void): () => void {
+  activeSchoolListeners.add(listener);
+  return () => activeSchoolListeners.delete(listener);
+}
+
 export function setActiveSchool(schoolId: string | null): void {
   activeSchoolId = schoolId && schoolId.length > 0 ? schoolId : null;
   if (typeof localStorage !== "undefined") {
     if (activeSchoolId) localStorage.setItem("activeSchoolId", activeSchoolId);
     else localStorage.removeItem("activeSchoolId");
   }
+  for (const listener of activeSchoolListeners) listener();
 }
 export function getActiveSchool(): string | null {
   return activeSchoolId;

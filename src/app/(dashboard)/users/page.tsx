@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, Plus, Search, ShieldCheck, Trash2, Users as UsersIcon } from "lucide-react";
+import { Activity, GraduationCap, Pencil, Plus, Search, Trash2, Users as UsersIcon } from "lucide-react";
 import {
   USER_ROLES,
   useDeleteUser,
@@ -17,6 +17,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
+import { SchoolBreakdown } from "@/components/users/school-breakdown";
 import { Select } from "@/components/ui/select";
 import { UserFormModal } from "@/components/users/user-form-modal";
 import { cn, formatDate, formatMoney } from "@/lib/utils";
@@ -251,20 +252,23 @@ export default function UsersPage() {
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <StatCard
           icon={<UsersIcon className="h-5 w-5" />}
-          label={t("users.stats.users")}
-          value={formatMoney(stats?.userCount ?? 0)}
+          label={t("users.stats.accounts")}
+          value={formatMoney(stats?.accountCount ?? 0)}
         />
         <StatCard
-          icon={<ShieldCheck className="h-5 w-5" />}
-          label={t("users.stats.roles")}
-          value={formatMoney(stats?.roleCount ?? 0)}
+          icon={<GraduationCap className="h-5 w-5" />}
+          label={t("users.stats.students")}
+          value={formatMoney(stats?.studentCount ?? 0)}
         />
         <StatCard
-          icon={<UsersIcon className="h-5 w-5" />}
-          label={t("users.stats.page")}
-          value={formatMoney(data?.items.length ?? 0)}
+          icon={<Activity className="h-5 w-5" />}
+          label={t("users.stats.active")}
+          value={formatMoney(stats?.activeCount ?? 0)}
         />
       </div>
+
+      {/* Maktablar kesimi — faqat global hisobda (bir nechta qator bo'lganda). */}
+      <SchoolBreakdown />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">

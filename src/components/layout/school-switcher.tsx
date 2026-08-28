@@ -5,7 +5,7 @@ import { Building2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/auth/store";
 import { useSchoolOptions } from "@/lib/api/hr-branches";
-import { getActiveSchool, setActiveSchool } from "@/lib/api/client";
+import { getActiveSchool, setActiveSchool, subscribeActiveSchool } from "@/lib/api/client";
 import { isGlobalAccount, isSchoolSwitchableHost } from "@/lib/tenant/school-scope";
 
 /**
@@ -38,6 +38,10 @@ export function SchoolSwitcher() {
     const hostname = window.location.hostname;
     setAllowedHost(isSchoolSwitchableHost(hostname));
   }, []);
+
+  // Maktab boshqa joydan (masalan Foydalanuvchilar sahifasidagi maktab
+  // kesimidan) almashtirilsa, yorliq eskirib qolmasin.
+  useEffect(() => subscribeActiveSchool(() => setValue(getActiveSchool() ?? "")), []);
 
   if (!isGlobal || !allowedHost) return null;
 
