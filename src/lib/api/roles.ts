@@ -31,6 +31,12 @@ export interface Role {
   isSystem: boolean;
   /** Himoyalangan rol (direktor, CEO) — faqat `roles.manage-privileged` egasi tahrirlaydi/tayinlaydi. */
   isPrivileged: boolean;
+  /**
+   * Global rol — BARCHA maktablarga tegishli. Tahrirlash/o'chirish har bir
+   * maktabdagi shu roldagi foydalanuvchilarga tegadi, shuning uchun UI
+   * ogohlantirish ko'rsatadi (`lib/roles/global-role.ts`).
+   */
+  isGlobal: boolean;
   dataScope: DataScope;
   permissionCount: number;
   permissions: RolePermission[];

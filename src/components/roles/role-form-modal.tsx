@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronDown, Minus, Search, ShieldCheck } from "lucide-react";
+import { Check, ChevronDown, Globe, Minus, Search, ShieldCheck } from "lucide-react";
 import {
   usePermissionCatalog,
   useCreateRole,
@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Spinner } from "@/components/ui/card";
+import { useSchoolOptions } from "@/lib/api/hr-branches";
+import { affectedSchoolCount, requiresGlobalWarning } from "@/lib/roles/global-role";
 import { cn } from "@/lib/utils";
 
 type TriState = "all" | "some" | "none";
@@ -126,6 +128,15 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Global rolni saqlashdan oldingi tasdiq bosqichi — bunday rol barcha
+   * maktablarga tegishli, shuning uchun "Saqlash" darhol yozmaydi.
+   */
+  const [confirmingGlobal, setConfirmingGlobal] = useState(false);
+
+  const schools = useSchoolOptions();
+  const maktabSoni = affectedSchoolCount(schools.data);
+  const globalOgohlantirish = requiresGlobalWarning(role, "update");
 
   useEffect(() => {
     if (open) {
@@ -135,6 +146,7 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
       setExpanded(new Set(catalog?.categories[0] ? [catalog.categories[0].key] : []));
       setSearch("");
       setError(null);
+      setConfirmingGlobal(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, role]);
@@ -185,6 +197,17 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
       return;
     }
 
+    // Global rol — saqlashdan oldin tasdiq. Ikkinchi bosqichda
+    // `confirmingGlobal` allaqachon true bo'ladi va to'g'ridan-to'g'ri yoziladi.
+    if (globalOgohlantirish && !confirmingGlobal) {
+      setConfirmingGlobal(true);
+      return;
+    }
+
+    await saqlash();
+  }
+
+  async function saqlash() {
     const permissionCodes = Array.from(selected);
     const display = name.trim();
     try {
@@ -209,28 +232,50 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
       }
       onClose();
     } catch (err) {
+      setConfirmingGlobal(false);
       setError(err instanceof ApiError ? err.detailedMessage(locale) : t("common.error"));
     }
   }
 
+  const globalMatn =
+    maktabSoni === null
+      ? t("roles.global.warnBody")
+      : t("roles.global.warnBodyCount").replace("{count}", String(maktabSoni));
+
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={isEdit ? t("roles.edit") : t("roles.new")}
-      subtitle={isEdit ? role?.displayName : t("roles.subtitle")}
-      footer={
-        <>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
-            {t("common.cancel")}
-          </Button>
-          <Button type="submit" form="role-form" loading={pending}>
-            {isEdit ? t("common.save") : t("roles.create")}
-          </Button>
-        </>
-      }
-    >
+    <>
+      {/* Tasdiq paytida forma oynasi YASHIRILADI, ichma-ich ochilmaydi: ikkita
+          Modal bir vaqtda ochiq bo'lsa Escape ikkalasini ham yopib, tahrirlarni
+          yo'qotardi. Holat komponentda turgani uchun forma qaytganda saqlanadi. */}
+      <Modal
+        open={open && !confirmingGlobal}
+        onClose={onClose}
+        title={isEdit ? t("roles.edit") : t("roles.new")}
+        subtitle={isEdit ? role?.displayName : t("roles.subtitle")}
+        footer={
+          <>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={pending}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" form="role-form" loading={pending}>
+              {isEdit ? t("common.save") : t("roles.create")}
+            </Button>
+          </>
+        }
+      >
       <form id="role-form" onSubmit={handleSubmit} className="space-y-6">
+        {/* Global rol — o'zgarish barcha maktablarga tegadi. Banner saqlashdan
+            OLDIN ogohlantiradi, tasdiq oynasi tasodifiy bosishni ushlaydi. */}
+        {globalOgohlantirish && (
+          <div className="flex gap-2.5 rounded-lg bg-caution/14 p-3">
+            <Globe className="mt-0.5 h-4 w-4 shrink-0 text-caution" aria-hidden />
+            <div className="text-sm">
+              <p className="font-medium text-ink">{t("roles.global.warnTitle")}</p>
+              <p className="mt-0.5 text-ink-soft">{globalMatn}</p>
+            </div>
+          </div>
+        )}
+
         {/* 1. Nomi */}
         <section className="space-y-2">
           <h4 className="label">1. {t("roles.f.name")}</h4>
@@ -401,6 +446,39 @@ export function RoleFormModal({ open, onClose, role }: RoleFormModalProps) {
           </p>
         )}
       </form>
-    </Modal>
+      </Modal>
+
+      {/* Tasdiq bosqichi: "Saqlash" bosilgach global rol uchun shu oyna chiqadi
+          va faqat shundan keyin yoziladi (sahifadagi o'chirish tasdig'i naqshi). */}
+      <Modal
+        open={confirmingGlobal}
+        onClose={() => setConfirmingGlobal(false)}
+        size="md"
+        title={t("roles.global.warnTitle")}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setConfirmingGlobal(false)}
+              disabled={pending}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button type="button" onClick={saqlash} loading={pending}>
+              {t("roles.global.confirm")}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex gap-2.5">
+          <Globe className="mt-0.5 h-4 w-4 shrink-0 text-caution" aria-hidden />
+          <div className="text-sm">
+            <p className="text-ink-soft">{globalMatn}</p>
+            <p className="mt-2 font-medium text-ink">{role?.displayName}</p>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Lock, Pencil, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { Globe, KeyRound, Lock, Pencil, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useDeleteRole, useRoles, type Role } from "@/lib/api/roles";
 import { ApiError } from "@/lib/api/types";
 import { useI18n } from "@/lib/i18n/provider";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
 import { Can } from "@/components/auth/can";
+import { requiresGlobalWarning } from "@/lib/roles/global-role";
 import { useCan } from "@/lib/auth/use-can";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
@@ -151,6 +152,15 @@ export default function RolesPage() {
                   <Lock className="h-3.5 w-3.5 shrink-0 text-ink-muted" aria-label={t("roles.privileged")} />
                 </span>
               )}
+              {/* Global rol maktab rolidan farq qilib tursin: uni tahrirlash
+                  BARCHA maktablarga tegadi. Belgi hammaga ko'rsatiladi —
+                  maktab direktoriga tahrirlash tugmasi nega yo'qligini ham
+                  shu tushuntiradi. */}
+              {r.isGlobal && (
+                <span title={t("roles.global.hint")}>
+                  <Globe className="h-3.5 w-3.5 shrink-0 text-ink-muted" aria-label={t("roles.global")} />
+                </span>
+              )}
             </p>
             <p className="truncate text-xs text-ink-muted">{r.title}</p>
           </div>
@@ -288,6 +298,15 @@ export default function RolesPage() {
           {t("roles.delete.confirm")}{" "}
           <span className="font-medium text-ink">{deleting?.displayName}</span>?
         </p>
+        {requiresGlobalWarning(deleting, "delete") && (
+          <div className="mt-3 flex gap-2.5 rounded-lg bg-caution/14 p-3">
+            <Globe className="mt-0.5 h-4 w-4 shrink-0 text-caution" aria-hidden />
+            <div className="text-sm">
+              <p className="font-medium text-ink">{t("roles.global.warnTitle")}</p>
+              <p className="mt-0.5 text-ink-soft">{t("roles.global.warnDelete")}</p>
+            </div>
+          </div>
+        )}
         {deleteError && <p className="mt-3 text-sm text-negative">{deleteError}</p>}
       </Modal>
     </div>
