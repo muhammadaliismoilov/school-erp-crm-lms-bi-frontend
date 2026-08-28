@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, Landmark, LogOut } from "lucide-react";
 import { useAuthStore } from "@/lib/auth/store";
 import { useCan } from "@/lib/auth/use-can";
 import { useI18n } from "@/lib/i18n/provider";
@@ -14,6 +14,7 @@ import {
   type NavGroup,
   type NavLeaf,
 } from "@/lib/nav";
+import { resolveBrand } from "@/lib/tenant/brand";
 import { cn, initials } from "@/lib/utils";
 
 function isLeafActive(pathname: string, href: string) {
@@ -115,6 +116,11 @@ export function Sidebar() {
     isGroup(entry) ? isGroupVisible(entry, can) : can(entry.permission),
   );
 
+  // Brend hisobning KIMLIGINI ko'rsatadi: maktab xodimiga o'z maktabi nomi,
+  // global hisobga "Bosh ofis". Aktiv maktabga EMAS — uni yuqoridagi tanlagich
+  // ko'rsatadi, brend har almashtirishda sakrab turmasin.
+  const brand = resolveBrand(user);
+
   async function handleSignOut() {
     await signOut();
     router.replace("/login");
@@ -123,15 +129,27 @@ export function Sidebar() {
   return (
     <aside className="bg-navy-texture sticky top-0 hidden h-screen w-64 shrink-0 flex-col px-4 py-6 lg:flex">
       <div className="flex items-center gap-3 px-2">
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent font-display text-xl font-extrabold text-accent-fg">
-          S
+        <span
+          className={cn(
+            "grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-fg",
+            // Global hisob nishoni harfsiz va halqali — maktab nishonlaridan
+            // bir qarashda ajralib tursin.
+            brand.kind === "global"
+              ? "ring-2 ring-paper/25 ring-offset-2 ring-offset-transparent"
+              : "font-display text-base font-extrabold tracking-tight",
+          )}
+        >
+          {brand.initials ?? <Landmark className="h-5 w-5" aria-hidden />}
         </span>
-        <div className="leading-tight">
-          <p className="font-display text-lg font-bold tracking-tight text-paper">
-            School
+        <div className="min-w-0 leading-tight">
+          <p
+            className="truncate font-display text-lg font-bold tracking-tight text-paper"
+            title={brand.title}
+          >
+            {brand.title}
           </p>
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-paper/45">
-            console
+            {t(brand.subtitleKey)}
           </p>
         </div>
       </div>

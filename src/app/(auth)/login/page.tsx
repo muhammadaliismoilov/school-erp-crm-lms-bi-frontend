@@ -129,7 +129,9 @@ function LoginPageContent() {
   // Faqat real maktab subdomenida (masalan elegantschool.crm.uz) rezolyutsiya
   // qilinadi — `admin.*`/bypass manzillarida umumiy brendlash saqlanadi.
   const resolvedSchool = isTenantSubdomain ? schoolQuery.data : undefined;
-  const brandName = resolvedSchool?.schoolName ?? "School Console";
+  // Zaxira nom platformaniki: kirishdan oldin qaysi maktab ekani noma'lum,
+  // lekin "School Console" begona/vaqtinchalik ko'rinadi.
+  const brandName = resolvedSchool?.schoolName ?? "Yuton";
   const brandLogo = resolvedSchool?.logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element -- tashqi maktab logotipi, next/image domen ro'yxati sozlanmagan
     <img

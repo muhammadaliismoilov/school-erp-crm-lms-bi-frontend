@@ -61,6 +61,12 @@ export interface AuthenticatedUser {
    * shuning uchun `undefined`ni `null` bilan ADASHTIRMANG — `=== null` tekshiring.
    */
   schoolId?: string | null;
+  /**
+   * Maktab nomi — yon paneldagi brend uchun. Login/refresh javobining
+   * TANASIDA keladi (tokenda yo'q, u kichik ushlanadi). Eski sessiyalarda
+   * bo'lmasligi mumkin — `resolveBrand` bunda platforma nomiga tushadi.
+   */
+  schoolName?: string | null;
   branchId?: string | null;
   dataScope?: string | null;
 }
