@@ -19,6 +19,7 @@ import { SchoolFormModal } from "@/components/schools/school-form-modal";
 import { formatMoney } from "@/lib/utils";
 import { Can } from "@/components/auth/can";
 import { SchoolProfile } from "@/components/schools/school-profile";
+import { SchoolModulesCard } from "@/components/schools/school-modules-card";
 import { useAuthStore } from "@/lib/auth/store";
 import { getActiveSchool } from "@/lib/api/client";
 import { isSingleSchoolContext } from "@/lib/tenant/school-scope";
@@ -177,7 +178,11 @@ export default function SchoolsPage() {
 
       {singleSchool ? (
         profileSchool ? (
-          <SchoolProfile school={profileSchool} onEdit={openEdit} />
+          <>
+            <SchoolProfile school={profileSchool} onEdit={openEdit} />
+            {/* Modul tugmalari faqat CEO'da ko'rinadi (komponent ichida `Can`). */}
+            <SchoolModulesCard schoolId={profileSchool.id} />
+          </>
         ) : (
           !isLoading && (
             <Card className="p-6 text-sm text-ink-muted">{t("common.empty")}</Card>

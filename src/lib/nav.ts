@@ -78,6 +78,13 @@ export interface NavLeaf {
   icon: LucideIcon;
   /** Required permission; omit for always-visible items (self-service pages). */
   permission?: string;
+  /**
+   * Maktab darajasidagi modul kaliti — bo'lim faqat CEO uni shu maktabga
+   * YOQQANDA ko'rinadi. Ruxsatdan ALOHIDA qatlam: `director` global rol
+   * bo'lgani uchun "faqat bitta maktabga berish" ruxsat orqali imkonsiz.
+   * Backendda `@RequiresModule` bilan bir xil kalit.
+   */
+  module?: string;
 }
 
 export interface NavGroup {
@@ -126,7 +133,7 @@ export const MANAGEMENT_GROUP: NavGroup = {
     { href: "/users", labelKey: "nav.users", icon: UserCog, permission: "users.read" },
     { href: "/roles", labelKey: "nav.roles", icon: ShieldCheck, permission: "roles.read" },
     { href: "/appeals", labelKey: "nav.appeals", icon: MessagesSquare, permission: "appeals.read" },
-    { href: "/integrations", labelKey: "nav.integrations", icon: Blocks, permission: "integrations.read" },
+    { href: "/integrations", labelKey: "nav.integrations", icon: Blocks, permission: "integrations.read", module: "integrations" },
   ],
 };
 
@@ -253,9 +260,27 @@ export const NAV_LEAVES: NavLeaf[] = NAV_ITEMS.flatMap((entry) =>
  * Guruh ko'rinadimi: kamida bitta bolasi ruxsat etilgan bo'lsa. `can` — 
  * `useCan()` qaytaradigan funksiya (yoki testlarda oddiy predikat).
  */
+/**
+ * Yaproq ko'rinadimi — IKKI qatlam: ruxsat VA maktab moduli.
+ *
+ * `modules` hali kelmagan bo'lsa (so'rov yuklanmoqda) bayroqli bo'lim
+ * YASHIRIN qoladi: ko'rsatib keyin olib qo'yishdan ko'ra, kechroq ko'rsatish
+ * yaxshiroq. Bayroqli modullarning defaulti baribir "o'chiq".
+ */
+export function isLeafVisible(
+  leaf: NavLeaf,
+  can: (permission?: string) => boolean,
+  modules?: Record<string, boolean>,
+): boolean {
+  if (!can(leaf.permission)) return false;
+  if (!leaf.module) return true;
+  return modules?.[leaf.module] === true;
+}
+
 export function isGroupVisible(
   group: NavGroup,
   can: (permission?: string) => boolean,
+  modules?: Record<string, boolean>,
 ): boolean {
-  return group.children.some((child) => can(child.permission));
+  return group.children.some((child) => isLeafVisible(child, can, modules));
 }

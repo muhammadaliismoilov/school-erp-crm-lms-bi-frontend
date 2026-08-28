@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { apiRequest } from "./client";
+import { apiRequest, getActiveSchool } from "./client";
 
 /** Mirrors backend enums in src/modules/schools/enums/school.enums.ts. */
 export const SCHOOL_TYPES = ["general", "private", "specialized", "international"] as const;
@@ -180,5 +180,49 @@ export function useDeleteSchool() {
   return useMutation({
     mutationFn: (id: string) => schoolsApi.remove(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: SCHOOLS_KEY }),
+  });
+}
+
+/** Maktab darajasida yoqib/o'chirib qo'yiladigan modullar (backend bilan bir xil). */
+export type GatedModule = "integrations";
+
+export type SchoolModules = Record<GatedModule, boolean>;
+
+const MODULES_KEY = ["schools", "modules"] as const;
+
+/**
+ * Aktiv maktabda qaysi modullar yoqilgan.
+ *
+ * `getActiveSchool()` kalitga kiritilgan: global CEO tanlagichdan maktab
+ * almashtirsa, so'rov qaytadan bajariladi. Maktabga bog'langan foydalanuvchi
+ * uchun kalit o'zgarmaydi.
+ */
+export function useEnabledModules() {
+  return useQuery({
+    queryKey: [...MODULES_KEY, "mine", getActiveSchool()],
+    queryFn: () => apiRequest<SchoolModules>("/schools/modules/mine"),
+    staleTime: 30_000,
+  });
+}
+
+export function useSchoolModules(schoolId: string | null) {
+  return useQuery({
+    queryKey: [...MODULES_KEY, schoolId],
+    queryFn: () => apiRequest<SchoolModules>(`/schools/${schoolId}/modules`),
+    enabled: Boolean(schoolId),
+    staleTime: 30_000,
+  });
+}
+
+export function useSetSchoolModule(schoolId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { module: GatedModule; enabled: boolean }) =>
+      apiRequest<SchoolModules>(`/schools/${schoolId}/modules`, {
+        method: "PATCH",
+        body: input,
+      }),
+    // Yon paneldagi bo'limlar ham darhol yangilansin.
+    onSuccess: () => qc.invalidateQueries({ queryKey: MODULES_KEY }),
   });
 }

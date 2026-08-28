@@ -10,10 +10,12 @@ import { useI18n } from "@/lib/i18n/provider";
 import {
   NAV_ITEMS,
   isGroupVisible,
+  isLeafVisible,
   isGroup,
   type NavGroup,
   type NavLeaf,
 } from "@/lib/nav";
+import { useEnabledModules } from "@/lib/api/schools";
 import { resolveBrand } from "@/lib/tenant/brand";
 import { cn, initials } from "@/lib/utils";
 
@@ -53,7 +55,13 @@ function NavLeafLink({
   );
 }
 
-function NavGroupItem({ group }: { group: NavGroup }) {
+function NavGroupItem({
+  group,
+  modules,
+}: {
+  group: NavGroup;
+  modules?: Record<string, boolean>;
+}) {
   const pathname = usePathname();
   const { t } = useI18n();
   const can = useCan();
@@ -94,7 +102,7 @@ function NavGroupItem({ group }: { group: NavGroup }) {
       {open && (
         <div className="mt-0.5 flex flex-col gap-0.5 border-l border-paper/10 pl-3">
           {group.children
-            .filter((c) => can(c.permission))
+            .filter((c) => isLeafVisible(c, can, modules))
             .map((c) => (
               <NavLeafLink key={c.href} item={c} nested />
             ))}
@@ -110,10 +118,14 @@ export function Sidebar() {
   const can = useCan();
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
+  // Maktab modullari — bayroqli bo'limlar (Integratsiyalar) faqat CEO ularni
+  // shu maktabga yoqqanda ko'rinadi.
+  const { data: modules } = useEnabledModules();
+
   // Guruh o'z darvozasiga emas, bolalariga qarab ko'rinadi: bitta yaproqqa
   // ruxsati bor foydalanuvchi bo'limni ocha olishi kerak (T-01).
   const visible = NAV_ITEMS.filter((entry) =>
-    isGroup(entry) ? isGroupVisible(entry, can) : can(entry.permission),
+    isGroup(entry) ? isGroupVisible(entry, can, modules) : isLeafVisible(entry, can, modules),
   );
 
   // Brend hisobning KIMLIGINI ko'rsatadi: maktab xodimiga o'z maktabi nomi,
@@ -160,7 +172,7 @@ export function Sidebar() {
       <nav className="mt-2 flex flex-1 flex-col gap-0.5 overflow-y-auto">
         {visible.map((entry) =>
           isGroup(entry) ? (
-            <NavGroupItem key={entry.id} group={entry} />
+            <NavGroupItem key={entry.id} group={entry} modules={modules} />
           ) : (
             <NavLeafLink key={entry.href} item={entry} />
           ),
