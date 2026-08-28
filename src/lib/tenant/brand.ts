@@ -1,4 +1,5 @@
 import type { AuthenticatedUser } from "@/lib/api/types";
+import { PLATFORM_NAME } from "@/lib/platform";
 import { isGlobalAccount } from "./school-scope";
 
 /**
@@ -60,5 +61,5 @@ export function resolveBrand(
 
   // Maktab nomi yetib kelmagan (eski sessiya, yoki maktab o'chirilgan) —
   // platforma nomiga tushamiz, "School" degan begona so'z chiqmasin.
-  return { kind: "fallback", title: "Yuton", subtitleKey: "brand.console", initials: null };
+  return { kind: "fallback", title: PLATFORM_NAME, subtitleKey: "brand.console", initials: null };
 }

@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/auth/store";
 import { useI18n } from "@/lib/i18n/provider";
 import { ApiError } from "@/lib/api/types";
 import { resolveSchoolByHostname } from "@/lib/api/public-schools";
+import { PLATFORM_NAME } from "@/lib/platform";
 import { isAdminHostname, isTenantBypassHostname } from "@/lib/tenant/hostname";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
@@ -131,7 +132,7 @@ function LoginPageContent() {
   const resolvedSchool = isTenantSubdomain ? schoolQuery.data : undefined;
   // Zaxira nom platformaniki: kirishdan oldin qaysi maktab ekani noma'lum,
   // lekin "School Console" begona/vaqtinchalik ko'rinadi.
-  const brandName = resolvedSchool?.schoolName ?? "Yuton";
+  const brandName = resolvedSchool?.schoolName ?? PLATFORM_NAME;
   const brandLogo = resolvedSchool?.logoUrl ? (
     // eslint-disable-next-line @next/next/no-img-element -- tashqi maktab logotipi, next/image domen ro'yxati sozlanmagan
     <img

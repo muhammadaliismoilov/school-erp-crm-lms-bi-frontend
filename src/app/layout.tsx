@@ -4,6 +4,7 @@ import {
   Hanken_Grotesk,
   JetBrains_Mono,
 } from "next/font/google";
+import { PLATFORM_NAME } from "@/lib/platform";
 import { Providers } from "@/lib/providers";
 import { themeNoFlashScript } from "@/lib/theme/provider";
 import "./globals.css";
@@ -30,8 +31,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Yuton Console — Boshqaruv paneli",
-  description: "Yuton School management platform — to‘liq API konsoli",
+  title: `${PLATFORM_NAME} — Boshqaruv paneli`,
+  description: "Xususiy maktablar uchun yagona boshqaruv platformasi — ERP, CRM, LMS va BI",
 };
 
 export const viewport: Viewport = {

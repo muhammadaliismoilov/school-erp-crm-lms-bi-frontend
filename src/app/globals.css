@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
- * Yuton Console — design language "Lime Terminal".
+ * Design language "Lime Terminal".
  * A sharp, technical admin console: warm near-black slabs, paper-warm light
  * mode, a single electric-lime signal accent, and mono detailing for the API
  * surface. Dual theme driven by [data-theme] on <html>.
