@@ -18,6 +18,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SchoolFormModal } from "@/components/schools/school-form-modal";
 import { formatMoney } from "@/lib/utils";
 import { Can } from "@/components/auth/can";
+import { SchoolProfile } from "@/components/schools/school-profile";
+import { useAuthStore } from "@/lib/auth/store";
+import { getActiveSchool } from "@/lib/api/client";
+import { isSingleSchoolContext } from "@/lib/tenant/school-scope";
 import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
 
 const typeTone: Record<string, "neutral" | "positive" | "accent" | "caution"> = {
@@ -67,6 +71,12 @@ export default function SchoolsPage() {
     search: search || undefined,
   });
   const removeSchool = useDeleteSchool();
+
+  // Sirt bitta maktabga qaratilganmi — u holda bu bo'lim reestr emas, "mening
+  // maktabim" profili. Backend ham aynan shu holatda bitta qator qaytaradi.
+  const user = useAuthStore((s) => s.user);
+  const singleSchool = isSingleSchoolContext(user, getActiveSchool());
+  const profileSchool = singleSchool ? data?.items?.[0] : undefined;
 
   const openCreate = () => {
     setEditing(null);
@@ -152,16 +162,29 @@ export default function SchoolsPage() {
     <div className="stagger">
       <PageHeader
         title={t("schools.title")}
-        subtitle={t("schools.listSubtitle")}
+        subtitle={singleSchool ? t("schools.profileSubtitle") : t("schools.listSubtitle")}
         action={
-          <Can permission="settings-school.create">
-            <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" />
-              {t("schools.new")}
-            </Button>
-          </Can>
+          singleSchool ? undefined : (
+            <Can permission="settings-school.create">
+              <Button onClick={openCreate}>
+                <Plus className="h-4 w-4" />
+                {t("schools.new")}
+              </Button>
+            </Can>
+          )
         }
       />
+
+      {singleSchool ? (
+        profileSchool ? (
+          <SchoolProfile school={profileSchool} onEdit={openEdit} />
+        ) : (
+          !isLoading && (
+            <Card className="p-6 text-sm text-ink-muted">{t("common.empty")}</Card>
+          )
+        )
+      ) : (
+        <>
 
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <StatCard
@@ -208,6 +231,8 @@ export default function SchoolsPage() {
         onPageChange={setPage}
         rowKey={(s) => s.id}
       />
+        </>
+      )}
 
       <SchoolFormModal open={formOpen} onClose={() => setFormOpen(false)} school={editing} />
 

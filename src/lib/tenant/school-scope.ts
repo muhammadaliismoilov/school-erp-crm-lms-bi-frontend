@@ -46,3 +46,20 @@ export function canSeeSchoolSwitcher(
 ): boolean {
   return isGlobalAccount(user) && isSchoolSwitchableHost(hostname);
 }
+
+/**
+ * Sirt bitta maktabga qaratilganmi — «Maktab ma'lumotlari» bo'limi ro'yxat
+ * emas, profil ko'rinishida chizilishi kerakmi.
+ *
+ * Mezon RUXSAT emas, KONTEKST: backend ham aynan shu mantiq bilan scoping
+ * qiladi (`user.schoolId ?? X-School-Id`), ya'ni bunday holatda ro'yxat
+ * baribir bitta qatordan iborat bo'ladi. Global CEO tanlagichdan maktab
+ * tanlasa ham profil ko'rinadi — u o'sha maktab ichida ishlayapti.
+ */
+export function isSingleSchoolContext(
+  user: Pick<AuthenticatedUser, "schoolId"> | null | undefined,
+  activeSchoolId: string | null,
+): boolean {
+  if (user?.schoolId) return true;
+  return Boolean(activeSchoolId);
+}
