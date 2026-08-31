@@ -32,8 +32,10 @@ export type AppealPeriod = (typeof APPEAL_PERIODS)[number];
 
 export interface Appeal {
   id: string;
-  fullName: string;
-  phone: string;
+  /** Anonim murojaatda `fullName`/`phone` backend'da saqlanmaydi — null keladi. */
+  isAnonymous: boolean;
+  fullName: string | null;
+  phone: string | null;
   type: AppealType;
   targetRole: TargetRole;
   description: string;
@@ -43,6 +45,9 @@ export interface Appeal {
   resolutionNote: string | null;
   resolvedById: string | null;
   resolvedAt: string | null;
+  /** Javob berish muddati: shikoyat 3 kun, taklif 7 kun. */
+  dueAt: string;
+  publicLinkId: string | null;
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -81,8 +86,11 @@ export interface AppealListParams {
 
 /** Admin manual create (matches CreateAppealDto). */
 export interface AppealInput {
-  fullName: string;
-  phone: string;
+  /** Faqat bosh ofis yubora oladi; maktab xodimi uchun backend rad etadi. */
+  schoolId?: string;
+  isAnonymous?: boolean;
+  fullName?: string;
+  phone?: string;
   type: AppealType;
   targetRole: TargetRole;
   description: string;
@@ -103,8 +111,9 @@ export interface AppealUpdateInput extends Partial<AppealInput> {
 
 /** Public unauthenticated submission (matches PublicCreateAppealDto). */
 export interface PublicAppealInput {
-  fullName: string;
-  phone: string;
+  isAnonymous?: boolean;
+  fullName?: string;
+  phone?: string;
   type: AppealType;
   targetRole: TargetRole;
   description: string;
@@ -128,6 +137,12 @@ const appealsApi = {
       body: { assigneeUserId },
     });
   },
+  transfer(id: string, schoolId: string): Promise<Appeal> {
+    return apiRequest<Appeal>(`/appeals/${id}/transfer`, {
+      method: "PATCH",
+      body: { schoolId },
+    });
+  },
   remove(id: string): Promise<void> {
     return apiRequest<void>(`/appeals/${id}`, { method: "DELETE" });
   },
@@ -139,8 +154,15 @@ const appealsApi = {
   },
 };
 
+export interface PublicAppealLinkInfo {
+  valid: boolean;
+  title: string;
+  /** Havola tegishli maktab nomi — ota-ona qaysi maktabga yozayotganini ko'rsin. */
+  schoolName: string | null;
+}
+
 /** Public, unauthenticated calls. */
-export function validatePublicAppealToken(token: string): Promise<{ valid: boolean; title: string }> {
+export function validatePublicAppealToken(token: string): Promise<PublicAppealLinkInfo> {
   return apiRequest(`/public/appeals/${token}`, { auth: false });
 }
 export function submitPublicAppeal(token: string, input: PublicAppealInput): Promise<{ id: string }> {
@@ -184,6 +206,15 @@ export function useAssignAppeal() {
   });
 }
 
+export function useTransferAppeal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, schoolId }: { id: string; schoolId: string }) =>
+      appealsApi.transfer(id, schoolId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: APPEALS_KEY }),
+  });
+}
+
 export function useDeleteAppeal() {
   const qc = useQueryClient();
   return useMutation({
@@ -197,6 +228,11 @@ export function useAppealPublicLink() {
     queryKey: ["appeals", "public-link"],
     queryFn: () => appealsApi.getPublicLink(),
     staleTime: 60_000,
+    // Maktab tanlanmaganda backend 400 qaytaradi — bu holat qayta urinishdan
+    // o'zgarmaydi. Standart 3 marta urinish `isError` ni sekundlarga
+    // kechiktirardi va sahifa shu vaqt ichida "havola yaratilmagan" degan
+    // YOLG'ON xabarni ko'rsatib turardi.
+    retry: false,
   });
 }
 

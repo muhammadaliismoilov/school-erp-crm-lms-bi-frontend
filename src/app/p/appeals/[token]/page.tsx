@@ -16,9 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { isCompleteUzPhone, PhoneInput } from "@/components/ui/phone-input";
 import { Select, type SelectOption } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 const emptyForm = {
+  isAnonymous: false,
   fullName: "",
   phone: "+998",
   type: "suggestion" as AppealType,
@@ -58,16 +60,21 @@ export default function PublicAppealPage({ params }: { params: { token: string }
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!form.fullName.trim()) return setError(t("appeals.err.nameRequired"));
-    if (!isCompleteUzPhone(form.phone.trim())) return setError(t("appeals.err.phoneInvalid"));
+    if (!form.isAnonymous) {
+      if (!form.fullName.trim()) return setError(t("appeals.err.nameRequired"));
+      if (!isCompleteUzPhone(form.phone.trim())) return setError(t("appeals.err.phoneInvalid"));
+    }
     if (!form.targetRole) return setError(t("appeals.err.roleRequired"));
     if (form.description.trim().length < 5) return setError(t("appeals.err.descriptionRequired"));
 
     setSubmitting(true);
     try {
       await submitPublicAppeal(token, {
-        fullName: form.fullName.trim(),
-        phone: form.phone.trim(),
+        // Anonim bo'lsa ism/telefon UMUMAN yuborilmaydi — ular hech qayerda
+        // saqlanmasligi kerak, "bo'sh satr yuborish" esa buni kafolatlamaydi.
+        ...(form.isAnonymous
+          ? { isAnonymous: true }
+          : { fullName: form.fullName.trim(), phone: form.phone.trim() }),
         type: form.type,
         targetRole: form.targetRole as TargetRole,
         description: form.description.trim(),
@@ -107,26 +114,43 @@ export default function PublicAppealPage({ params }: { params: { token: string }
           </div>
         </Shell>
       ) : (
-        <Shell title={t("appeals.public.title")} subtitle={t("appeals.public.subtitle")}>
+        <Shell
+          title={validation.data?.schoolName ?? t("appeals.public.title")}
+          subtitle={t("appeals.public.subtitle")}
+        >
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={`${t("appeals.f.fullName")} *`} htmlFor="p-name">
-                <Input
-                  id="p-name"
-                  value={form.fullName}
-                  onChange={(e) => set("fullName", e.target.value)}
-                  placeholder={t("appeals.f.fullNamePlaceholder")}
-                  maxLength={150}
-                />
-              </Field>
-              <Field label={`${t("appeals.f.phone")} *`} htmlFor="p-phone">
-                <PhoneInput
-                  id="p-phone"
-                  value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
-                />
-              </Field>
+            <div className="flex items-start gap-3 rounded-lg border border-line bg-surface p-3">
+              <Switch
+                checked={form.isAnonymous}
+                onCheckedChange={(checked) => set("isAnonymous", checked)}
+                aria-label={t("appeals.f.anonymous")}
+              />
+              <div>
+                <p className="text-sm font-medium text-ink">{t("appeals.f.anonymous")}</p>
+                <p className="text-xs text-ink-muted">{t("appeals.f.anonymousHint")}</p>
+              </div>
             </div>
+
+            {!form.isAnonymous && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={`${t("appeals.f.fullName")} *`} htmlFor="p-name">
+                  <Input
+                    id="p-name"
+                    value={form.fullName}
+                    onChange={(e) => set("fullName", e.target.value)}
+                    placeholder={t("appeals.f.fullNamePlaceholder")}
+                    maxLength={150}
+                  />
+                </Field>
+                <Field label={`${t("appeals.f.phone")} *`} htmlFor="p-phone">
+                  <PhoneInput
+                    id="p-phone"
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                  />
+                </Field>
+              </div>
+            )}
 
             <div>
               <p className="label mb-1.5">{t("appeals.f.type")} *</p>

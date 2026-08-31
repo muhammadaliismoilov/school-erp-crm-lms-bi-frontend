@@ -15,6 +15,11 @@ import { Field, Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { isCompleteUzPhone, PhoneInput } from "@/components/ui/phone-input";
 import { Select, type SelectOption } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { useSchoolOptions } from "@/lib/api/hr-branches";
+import { useAuthStore } from "@/lib/auth/store";
+import { isGlobalAccount } from "@/lib/tenant/school-scope";
+import { getActiveSchool } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
 interface AppealFormModalProps {
@@ -23,8 +28,10 @@ interface AppealFormModalProps {
 }
 
 const emptyForm = {
+  isAnonymous: false,
   fullName: "",
   phone: "+998",
+  schoolId: "",
   type: "suggestion" as AppealType,
   targetRole: "" as TargetRole | "",
   description: "",
@@ -33,15 +40,23 @@ const emptyForm = {
 export function AppealFormModal({ open, onClose }: AppealFormModalProps) {
   const { t, locale } = useI18n();
   const create = useCreateAppeal();
+  const user = useAuthStore((s) => s.user);
+  // Bosh ofis hisobi "Barcha maktablar" holatida turishi mumkin — u holda
+  // so'rovda maktab umuman bo'lmaydi va backend 400 qaytaradi. Shuning uchun
+  // maktab shu formaning O'ZIDA tanlanadi.
+  const isGlobal = isGlobalAccount(user);
+  const { data: schoolOptions } = useSchoolOptions();
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      setForm(emptyForm);
+      // Tanlagichda allaqachon maktab tanlangan bo'lsa, uni oldindan qo'yamiz —
+      // CEO ko'pincha shu maktab kontekstida ishlaydi.
+      setForm({ ...emptyForm, schoolId: (isGlobal && getActiveSchool()) || "" });
       setError(null);
     }
-  }, [open]);
+  }, [open, isGlobal]);
 
   const set = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -50,20 +65,31 @@ export function AppealFormModal({ open, onClose }: AppealFormModalProps) {
     () => TARGET_ROLES.map((r) => ({ value: r, label: t(`appeals.role.${r}`) })),
     [t],
   );
+  const schoolSelectOptions: SelectOption[] = useMemo(
+    () => (schoolOptions ?? []).map((s) => ({ value: s.id, label: s.label })),
+    [schoolOptions],
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!form.fullName.trim()) return setError(t("appeals.err.nameRequired"));
-    if (!isCompleteUzPhone(form.phone.trim())) return setError(t("appeals.err.phoneInvalid"));
+    if (isGlobal && !form.schoolId) return setError(t("appeals.err.schoolRequired"));
+    if (!form.isAnonymous) {
+      if (!form.fullName.trim()) return setError(t("appeals.err.nameRequired"));
+      if (!isCompleteUzPhone(form.phone.trim())) return setError(t("appeals.err.phoneInvalid"));
+    }
     if (!form.targetRole) return setError(t("appeals.err.roleRequired"));
     if (form.description.trim().length < 5) return setError(t("appeals.err.descriptionRequired"));
 
     try {
       await create.mutateAsync({
-        fullName: form.fullName.trim(),
-        phone: form.phone.trim(),
+        ...(isGlobal && form.schoolId ? { schoolId: form.schoolId } : {}),
+        // Anonim bo'lsa ism/telefon UMUMAN yuborilmaydi — backend ularni
+        // saqlamaydi, va bo'sh satr yuborish validatsiyani chalg'itardi.
+        ...(form.isAnonymous
+          ? { isAnonymous: true }
+          : { fullName: form.fullName.trim(), phone: form.phone.trim() }),
         type: form.type,
         targetRole: form.targetRole as TargetRole,
         description: form.description.trim(),
@@ -101,26 +127,56 @@ export function AppealFormModal({ open, onClose }: AppealFormModalProps) {
         {/* 1. Murojaat qiluvchi */}
         <section className="space-y-4">
           <h4 className="label">1. {t("appeals.section.applicant")}</h4>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={`${t("appeals.f.fullName")} *`} htmlFor="a-name">
-              <Input
-                id="a-name"
-                value={form.fullName}
-                onChange={(e) => set("fullName", e.target.value)}
-                placeholder={t("appeals.f.fullNamePlaceholder")}
-                maxLength={150}
-                required
+
+          {isGlobal && (
+            <Field label={`${t("appeals.f.school")} *`} htmlFor="a-school">
+              <Select
+                id="a-school"
+                value={form.schoolId}
+                onChange={(e) => set("schoolId", e.target.value)}
+                options={schoolSelectOptions}
+                placeholder={t("appeals.f.school")}
               />
             </Field>
-            <Field label={`${t("appeals.f.phone")} *`} htmlFor="a-phone">
-              <PhoneInput
-                id="a-phone"
-                value={form.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                required
-              />
-            </Field>
+          )}
+          {isGlobal && (
+            <p className="-mt-2 text-xs text-ink-muted">{t("appeals.f.schoolHint")}</p>
+          )}
+
+          <div className="flex items-start gap-3 rounded-lg border border-line bg-surface p-3">
+            <Switch
+              checked={form.isAnonymous}
+              onCheckedChange={(checked) => set("isAnonymous", checked)}
+              aria-label={t("appeals.f.anonymous")}
+            />
+            <div>
+              <p className="text-sm font-medium text-ink">{t("appeals.f.anonymous")}</p>
+              <p className="text-xs text-ink-muted">{t("appeals.f.anonymousHint")}</p>
+            </div>
           </div>
+
+          {!form.isAnonymous && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label={`${t("appeals.f.fullName")} *`} htmlFor="a-name">
+                <Input
+                  id="a-name"
+                  value={form.fullName}
+                  onChange={(e) => set("fullName", e.target.value)}
+                  placeholder={t("appeals.f.fullNamePlaceholder")}
+                  maxLength={150}
+                  required
+                />
+              </Field>
+              <Field label={`${t("appeals.f.phone")} *`} htmlFor="a-phone">
+                <PhoneInput
+                  id="a-phone"
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                  required
+                />
+              </Field>
+            </div>
+          )}
         </section>
 
         {/* 2. Tur va maqsad */}
