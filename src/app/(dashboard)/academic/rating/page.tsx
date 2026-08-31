@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -42,6 +42,7 @@ import { StatCard } from "@/components/students/stat-card";
 import { RatingPodium } from "@/components/academic/rating-podium";
 import { RatingStudentModal } from "@/components/academic/rating-student-modal";
 import { cn } from "@/lib/utils";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const TABS = [
   { key: "leaders", label: "Liderlar", icon: Trophy },
@@ -60,6 +61,13 @@ export default function RatingPage() {
   const [gradeLevel, setGradeLevel] = useState("");
   const [classId, setClassId] = useState("");
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [leaderLimit, setLeaderLimit] = useState<10 | 20>(10);
@@ -74,7 +82,7 @@ export default function RatingPage() {
     [gradeLevel, classId],
   );
 
-  const listQuery = useRatingList({ ...scope, search: search.trim() || undefined, page, limit });
+  const listQuery = useRatingList({ ...scope, search: searchQuery, page, limit });
   const leadersQuery = useRatingLeaders({ ...scope, limit: leaderLimit });
   const classesQuery = useRatingClasses({ gradeLevel: scope.gradeLevel });
   const subjectsQuery = useRatingSubjects(scope);
@@ -159,10 +167,7 @@ export default function RatingPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              resetPage();
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Ism bo‘yicha qidirish…"
             className="pl-9"
           />

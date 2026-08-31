@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Blocks, Phone, Search, Settings2, Sparkles } from "lucide-react";
 import {
   useIntegrations,
@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { IntegrationConfigModal } from "@/components/integrations/integration-config-modal";
 import { cn, formatMoney } from "@/lib/utils";
 import { useCrudPermissions } from "@/lib/auth/use-can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const PAGE_SIZE = 30;
 
@@ -54,12 +55,19 @@ export default function IntegrationsPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [configuring, setConfiguring] = useState<Integration | null>(null);
 
   const { data, isLoading, isError, refetch } = useIntegrations({
     page,
     limit: PAGE_SIZE,
-    search: search || undefined,
+    search: searchQuery,
   });
 
   const stats = data?.stats;
@@ -134,10 +142,7 @@ export default function IntegrationsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={t("integrations.searchPlaceholder")}
             className="pl-9"
           />

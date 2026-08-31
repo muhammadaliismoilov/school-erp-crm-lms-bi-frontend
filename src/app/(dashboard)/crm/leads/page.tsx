@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FilterX, LayoutGrid, List, Phone, Plus, Search, Trash2, Users } from "lucide-react";
 import {
   LEAD_STATUSES,
@@ -32,6 +32,7 @@ import { LeadEnrollDrawer } from "@/components/crm/lead-enroll-drawer";
 import { formatMoney } from "@/lib/utils";
 import { useCrudPermissions } from "@/lib/auth/use-can";
 import { Can } from "@/components/auth/can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const DATE_PRESETS = ["today", "week", "days10", "month"] as const;
 type DatePreset = (typeof DATE_PRESETS)[number];
@@ -97,6 +98,13 @@ export default function LeadsPage() {
 
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
   const [sourceId, setSourceId] = useState("");
   const [assignedToId, setAssignedToId] = useState("");
@@ -143,7 +151,7 @@ export default function LeadsPage() {
 
   const filters = useMemo(
     () => ({
-      search: search || undefined,
+      search: searchQuery,
       status: statusFilter || undefined,
       sourceId: sourceId || undefined,
       assignedToId: assignedToId || undefined,
@@ -157,7 +165,7 @@ export default function LeadsPage() {
       // page size at 100, so the kanban uses the max allowed limit.
       limit: view === "kanban" ? 100 : 20,
     }),
-    [search, statusFilter, sourceId, assignedToId, taskFilter, dateFrom, dateTo, tagId, page, view],
+    [searchQuery, statusFilter, sourceId, assignedToId, taskFilter, dateFrom, dateTo, tagId, page, view],
   );
 
   const { data, isLoading, isError, refetch } = useLeads(filters);
@@ -306,7 +314,7 @@ export default function LeadsPage() {
 
         <div className="relative max-w-xs flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
-          <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder={t("crm.leads.searchPlaceholder")} className="pl-9" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("crm.leads.searchPlaceholder")} className="pl-9" />
         </div>
       </div>
 

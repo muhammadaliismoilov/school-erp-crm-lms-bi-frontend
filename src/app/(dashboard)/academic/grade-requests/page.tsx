@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Check,
   ChevronLeft,
@@ -39,6 +39,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { GradeRequestFormModal } from "@/components/academic/grade-request-form-modal";
 import { useCrudPermissions } from "@/lib/auth/use-can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const KIND_TABS: { value: GradeRequestKind; label: string }[] = [
   { value: "assessment", label: "Baholash" },
@@ -68,6 +69,13 @@ export default function GradeRequestsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [status, setStatus] = useState<"" | GradeRequestStatus>("");
 
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -80,7 +88,7 @@ export default function GradeRequestsPage() {
     page,
     limit,
     kind,
-    search: search || undefined,
+    search: searchQuery,
     status: status || undefined,
   });
   const deleteRequest = useDeleteGradeRequest();

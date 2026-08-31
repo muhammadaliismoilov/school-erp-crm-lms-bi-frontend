@@ -40,6 +40,7 @@ import { applicantName, STATUS_TABS } from "@/lib/appeals/sla";
 import { cn, formatMoney } from "@/lib/utils";
 import { useCan } from "@/lib/auth/use-can";
 import { Can } from "@/components/auth/can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const PAGE_SIZE = 30;
 
@@ -90,6 +91,13 @@ export default function AppealsPage() {
   const [status, setStatus] = useState<AppealStatus | "">("pending");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [type, setType] = useState<AppealType | "">("");
   const [role, setRole] = useState<TargetRole | "">("");
   const [source, setSource] = useState<AppealSource | "">("");
@@ -101,7 +109,7 @@ export default function AppealsPage() {
     page,
     limit: PAGE_SIZE,
     status: status || undefined,
-    search: search || undefined,
+    search: searchQuery,
     type: type || undefined,
     targetRole: role || undefined,
     source: source || undefined,
@@ -269,10 +277,7 @@ export default function AppealsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={t("appeals.searchPlaceholder")}
             className="pl-9"
           />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
   ChevronLeft,
@@ -32,6 +32,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { useCrudPermissions } from "@/lib/auth/use-can";
 import { Can } from "@/components/auth/can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
@@ -44,6 +45,13 @@ export default function PaymentTypesPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<PaymentType | null>(null);
@@ -54,7 +62,7 @@ export default function PaymentTypesPage() {
   const { data, isLoading, isError, refetch } = usePaymentTypes({
     page,
     limit,
-    search: search || undefined,
+    search: searchQuery,
   });
   const createMut = useCreatePaymentType();
   const updateMut = useUpdatePaymentType();
@@ -141,10 +149,7 @@ export default function PaymentTypesPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="To‘lov turlarini qidirish"
             className="pl-9"
           />

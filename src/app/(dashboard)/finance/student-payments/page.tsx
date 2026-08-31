@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftRight,
@@ -47,6 +47,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { StudentBalancesView } from "@/components/students/student-balances-view";
 import { PlanConfigEditor } from "@/components/students/plan-config-editor";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
@@ -80,6 +81,13 @@ export default function StudentPaymentsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [month, setMonth] = useState<number | null>(null); // null = Barchasi
   const [paymentTypeCode, setPaymentTypeCode] = useState("");
 
@@ -91,12 +99,12 @@ export default function StudentPaymentsPage() {
 
   const filters: StudentPaymentListParams = useMemo(
     () => ({
-      search: search || undefined,
+      search: searchQuery,
       month: month ?? undefined,
       year: CURRENT_YEAR,
       paymentTypeCode: paymentTypeCode || undefined,
     }),
-    [search, month, paymentTypeCode],
+    [searchQuery, month, paymentTypeCode],
   );
 
   const { data, isLoading, isError, refetch } = useStudentPayments({ page, limit, ...filters });
@@ -217,10 +225,7 @@ export default function StudentPaymentsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              resetPage();
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="O‘quvchi ismi bo‘yicha qidirish"
             className="pl-9"
           />

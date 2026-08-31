@@ -14,6 +14,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 interface Props {
   open: boolean;
@@ -28,6 +29,7 @@ export function CourseStudentsDrawer({ open, courseId, onClose }: Props) {
 
   const [classId, setClassId] = useState("");
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export function CourseStudentsDrawer({ open, courseId, onClose }: Props) {
 
   const available = useAvailableCourseStudents(open ? courseId : null, {
     classId: classId || undefined,
-    search: search.trim() || undefined,
+    search: searchQuery,
   });
 
   const classOptions = [

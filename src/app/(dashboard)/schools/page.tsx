@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2, CreditCard, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import {
   useDeleteSchool,
@@ -24,6 +24,7 @@ import { useAuthStore } from "@/lib/auth/store";
 import { getActiveSchool } from "@/lib/api/client";
 import { isSingleSchoolContext } from "@/lib/tenant/school-scope";
 import { useRowActionsColumn, type RowAction } from "@/components/ui/row-actions";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const typeTone: Record<string, "neutral" | "positive" | "accent" | "caution"> = {
   general: "neutral",
@@ -61,6 +62,13 @@ export default function SchoolsPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<School | null>(null);
   const [deleting, setDeleting] = useState<School | null>(null);
@@ -69,7 +77,7 @@ export default function SchoolsPage() {
   const { data, isLoading, isError, refetch } = useSchools({
     page,
     limit: 20,
-    search: search || undefined,
+    search: searchQuery,
   });
   const removeSchool = useDeleteSchool();
 
@@ -214,10 +222,7 @@ export default function SchoolsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={t("common.search")}
             className="pl-9"
           />

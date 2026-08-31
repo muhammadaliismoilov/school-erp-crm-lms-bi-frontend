@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, GraduationCap, Pencil, Plus, Search, Trash2, Users as UsersIcon } from "lucide-react";
 import {
   USER_ROLES,
@@ -22,6 +22,7 @@ import { Select } from "@/components/ui/select";
 import { UserFormModal } from "@/components/users/user-form-modal";
 import { cn, formatDate, formatMoney } from "@/lib/utils";
 import { useCan } from "@/lib/auth/use-can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const PAGE_SIZE = 30;
 
@@ -87,6 +88,13 @@ export default function UsersPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [role, setRole] = useState<UserRole | "">("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
@@ -96,7 +104,7 @@ export default function UsersPage() {
   const { data, isLoading, isError, refetch } = useUsers({
     page,
     limit: PAGE_SIZE,
-    search: search || undefined,
+    search: searchQuery,
     role: role || undefined,
   });
   const removeUser = useDeleteUser();
@@ -275,10 +283,7 @@ export default function UsersPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={t("users.searchPlaceholder")}
             className="pl-9"
           />

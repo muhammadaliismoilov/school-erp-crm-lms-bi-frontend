@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Globe, KeyRound, Lock, Pencil, Plus, Search, ShieldCheck, Trash2 } from "lucide-react";
 import { useDeleteRole, useRoles, type Role } from "@/lib/api/roles";
 import { ApiError } from "@/lib/api/types";
@@ -17,6 +17,7 @@ import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/ui/page-header";
 import { RoleFormModal } from "@/components/roles/role-form-modal";
 import { cn, formatMoney } from "@/lib/utils";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const PAGE_SIZE = 20;
 
@@ -70,6 +71,13 @@ export default function RolesPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
   const [deleting, setDeleting] = useState<Role | null>(null);
@@ -78,7 +86,7 @@ export default function RolesPage() {
   const { data, isLoading, isError, refetch } = useRoles({
     page,
     limit: PAGE_SIZE,
-    search: search || undefined,
+    search: searchQuery,
   });
   const removeRole = useDeleteRole();
   const can = useCan();
@@ -249,10 +257,7 @@ export default function RolesPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={t("roles.searchPlaceholder")}
             className="pl-9"
           />

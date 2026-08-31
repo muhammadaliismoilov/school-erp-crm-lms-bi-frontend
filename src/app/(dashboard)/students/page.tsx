@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   MoreHorizontal,
@@ -35,6 +35,7 @@ import { StudentAvatar } from "@/components/students/student-avatar";
 import { StudentFormDrawer } from "@/components/students/student-form-drawer";
 import { useCrudPermissions } from "@/lib/auth/use-can";
 import { Can } from "@/components/auth/can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const statusTone: Record<string, "positive" | "neutral" | "caution" | "negative"> = {
   active: "positive",
@@ -64,6 +65,13 @@ export default function StudentsPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [gender, setGender] = useState<"" | Gender>("");
   const [classId, setClassId] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -75,7 +83,7 @@ export default function StudentsPage() {
   const { data, isLoading, isError, refetch } = useStudents({
     page,
     limit: 20,
-    search: search || undefined,
+    search: searchQuery,
     gender: gender || undefined,
     classId: classId || undefined,
   });
@@ -143,10 +151,7 @@ export default function StudentsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Ism, kod yoki telefon bo‘yicha qidirish"
             className="pl-9"
           />

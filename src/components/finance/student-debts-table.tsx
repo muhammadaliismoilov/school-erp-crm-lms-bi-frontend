@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import {
   monthKeyStr,
@@ -16,6 +16,7 @@ import { formatMoney } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/card";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
@@ -102,6 +103,13 @@ function SummaryCard({
 
 export function StudentDebtsTable() {
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [classId, setClassId] = useState("");
   const [status, setStatus] = useState<"" | DebtStatusFilter>("");
   const [month, setMonth] = useState("");
@@ -110,7 +118,7 @@ export function StudentDebtsTable() {
 
   const { data: classesData } = useClassList();
   const { data, isLoading, isError, refetch } = useDebtsStudents({
-    search: search || undefined,
+    search: searchQuery,
     classId: classId || undefined,
     status: status || undefined,
     month: month || undefined,
@@ -167,7 +175,7 @@ export function StudentDebtsTable() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => { setSearch(e.target.value); resetPage(); }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Ism yoki guruh bo‘yicha qidirish..."
             className="pl-9"
           />

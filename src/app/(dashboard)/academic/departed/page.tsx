@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MoreHorizontal,
   RotateCcw,
@@ -33,6 +33,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
 import { StudentAvatar } from "@/components/students/student-avatar";
 import { useCrudPermissions } from "@/lib/auth/use-can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const GENDER_TABS: { value: "" | Gender; label: string }[] = [
   { value: "", label: "Barchasi" },
@@ -53,6 +54,13 @@ export default function DepartedStudentsPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [gender, setGender] = useState<"" | Gender>("");
   const [classId, setClassId] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -62,7 +70,7 @@ export default function DepartedStudentsPage() {
   const { data, isLoading, isError, refetch } = useDepartedStudents({
     page,
     limit: PAGE_SIZE,
-    search: search || undefined,
+    search: searchQuery,
     gender: gender || undefined,
     classId: classId || undefined,
   });
@@ -143,10 +151,7 @@ export default function DepartedStudentsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="O‘quvchi qidirish"
             className="pl-9"
           />

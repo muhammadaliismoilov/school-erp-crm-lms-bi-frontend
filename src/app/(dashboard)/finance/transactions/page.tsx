@@ -63,6 +63,7 @@ import { Drawer } from "@/components/ui/drawer";
 import { Spinner } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/students/stat-card";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
@@ -99,6 +100,13 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [type, setType] = useState<"" | TransactionType>("");
   const [categoryId, setCategoryId] = useState("");
   const [paymentTypeId, setPaymentTypeId] = useState("");
@@ -116,7 +124,7 @@ export default function TransactionsPage() {
 
   const filters: TransactionListParams = useMemo(
     () => ({
-      search: search || undefined,
+      search: searchQuery,
       type: type || undefined,
       purposeCategoryId: categoryId || undefined,
       paymentTypeId: paymentTypeId || undefined,
@@ -125,7 +133,7 @@ export default function TransactionsPage() {
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
     }),
-    [search, type, categoryId, paymentTypeId, personId, month, dateFrom, dateTo],
+    [searchQuery, type, categoryId, paymentTypeId, personId, month, dateFrom, dateTo],
   );
 
   const { data, isLoading, isError, refetch } = useTransactions({ page, limit, ...filters });
@@ -264,10 +272,7 @@ export default function TransactionsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              resetPage();
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Izoh yoki shaxs bo‘yicha qidirish"
             className="pl-9"
           />

@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useList, type ResourceRecord } from "@/lib/api/resource";
 import { useI18n } from "@/lib/i18n/provider";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 interface TablePageProps {
   title: string;
@@ -44,9 +45,16 @@ export function AcademicTablePage({
   const { t } = useI18n();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
 
   const effectiveQuery = serverPaginated
-    ? { ...query, page, limit: pageSize, search: search || undefined }
+    ? { ...query, page, limit: pageSize, search: searchQuery }
     : query;
 
   const { rows, meta, isLoading, isError, refetch } = useList(
@@ -88,10 +96,7 @@ export function AcademicTablePage({
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder={t("common.search")}
             className="pl-9"
           />

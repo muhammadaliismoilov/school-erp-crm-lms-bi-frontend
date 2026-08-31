@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Link2, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import {
   useDeleteReferral,
@@ -24,6 +24,7 @@ import {
   useRowActionsColumn,
   type RowAction,
 } from "@/components/ui/row-actions";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 function StatCard({ icon, label, value, tone = "accent" }: {
   icon: React.ReactNode;
@@ -84,6 +85,20 @@ export default function ReferralsPage() {
   const { t } = useI18n();
 
   const [search, setSearch] = useState("");
+
+  const searchQuery = useDebouncedSearch(search);
+
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+
+  useEffect(() => {
+
+    setPage(1);
+
+  }, [searchQuery]);
   const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Referral | null>(null);
@@ -91,8 +106,8 @@ export default function ReferralsPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const filters = useMemo(
-    () => ({ search: search || undefined, page, limit: 20 }),
-    [search, page],
+    () => ({ search: searchQuery, page, limit: 20 }),
+    [searchQuery, page],
   );
 
   const { data, isLoading, isError, refetch } = useReferrals(filters);
@@ -189,7 +204,7 @@ export default function ReferralsPage() {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="relative max-w-xs flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
-          <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder={t("referral.searchPlaceholder")} className="pl-9" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("referral.searchPlaceholder")} className="pl-9" />
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Download,
@@ -44,6 +44,7 @@ import { StudentAvatar } from "@/components/students/student-avatar";
 import { UserFormModal } from "@/components/users/user-form-modal";
 import { CredentialsModal } from "@/components/users/credentials-modal";
 import { useCan } from "@/lib/auth/use-can";
+import { useDebouncedSearch } from "@/lib/hooks/use-debounced-search";
 
 const GENDER_TABS: { value: "" | UserGender; label: string }[] = [
   { value: "", label: "Barchasi" },
@@ -69,6 +70,13 @@ export default function ParentsPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const searchQuery = useDebouncedSearch(search);
+  // Qidiruv o'zgarsa birinchi sahifaga qaytamiz. Reset DEBOUNCELANGAN qiymatga
+  // bog'langan: harf bosilganda qaytarsak, kutish tugashidan oldin eski qidiruv
+  // bilan ortiqcha so'rov ketardi (foydalanuvchi 1-sahifada bo'lmasa).
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery]);
   const [gender, setGender] = useState<"" | UserGender>("");
   const [classId, setClassId] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -83,7 +91,7 @@ export default function ParentsPage() {
     role: "PARENT",
     page,
     limit: 20,
-    search: search || undefined,
+    search: searchQuery,
     gender: gender || undefined,
     childClassId: classId || undefined,
   });
@@ -197,10 +205,7 @@ export default function ParentsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Ism, login yoki telefon bo‘yicha qidirish"
             className="pl-9"
           />
