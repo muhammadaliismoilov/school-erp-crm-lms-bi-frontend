@@ -15,7 +15,7 @@ import {
 } from "@/lib/api/users";
 import { useCan } from "@/lib/auth/use-can";
 import { useRoles } from "@/lib/api/roles";
-import { useBranchOptions, useSchoolOptions } from "@/lib/api/hr-branches";
+import { useBranchesEnabled, useBranchOptions, useSchoolOptions } from "@/lib/api/hr-branches";
 import {
   ACCEPTED_IMAGE_TYPES,
   MAX_UPLOAD_SIZE,
@@ -224,6 +224,9 @@ export function UserFormModal({
   // Maktab / filial — ko'p-maktabli ajratish uchun foydalanuvchiga biriktiriladi.
   const schools = useSchoolOptions();
   const branches = useBranchOptions();
+  // Filiali yo'q maktabda "Filial" maydoni bo'sh tanlagich bo'lib turardi —
+  // bo'lim o'chiq bo'lsa maydon UMUMAN chizilmaydi.
+  const branchesEnabled = useBranchesEnabled();
   const schoolOptions: SelectOption[] = useMemo(
     () => [
       { value: "", label: "Maktabni tanlang" },
@@ -616,7 +619,7 @@ export function UserFormModal({
         */}
         {(!isEdit || canReassignSchool) && (
           <section className="space-y-4">
-            <h4 className="label">Maktab va filial</h4>
+            <h4 className="label">{branchesEnabled ? "Maktab va filial" : "Maktab"}</h4>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Maktab" htmlFor="u-school">
                 <Select
@@ -627,14 +630,16 @@ export function UserFormModal({
                   disabled={lockSchool}
                 />
               </Field>
-              <Field label="Filial" htmlFor="u-branch">
-                <Select
-                  id="u-branch"
-                  value={form.branchId}
-                  onChange={(e) => set("branchId", e.target.value)}
-                  options={branchOptions}
-                />
-              </Field>
+              {branchesEnabled && (
+                <Field label="Filial" htmlFor="u-branch">
+                  <Select
+                    id="u-branch"
+                    value={form.branchId}
+                    onChange={(e) => set("branchId", e.target.value)}
+                    options={branchOptions}
+                  />
+                </Field>
+              )}
             </div>
           </section>
         )}

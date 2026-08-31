@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { apiRequest } from "./client";
+import { useEnabledModules } from "./schools";
 
 export interface BranchNode {
   id: string;
@@ -92,12 +93,28 @@ export function useBranchTree(params: BranchListParams) {
   });
 }
 
+/**
+ * Filial tanlovlari.
+ *
+ * Bayroq maktabda o'chiq bo'lsa so'rov UMUMAN yuborilmaydi: backend u yo'lni
+ * `@RequiresModule('branches')` bilan 403 qiladi, ya'ni so'rov faqat konsolni
+ * xato bilan to'ldirardi. Chaqiruvchilar allaqachon `data ?? []` yozgani uchun
+ * ro'yxat shunchaki bo'sh bo'ladi — bu tekshiruvni HAR bir formada takrorlash
+ * shart emas.
+ */
 export function useBranchOptions() {
+  const modules = useEnabledModules();
   return useQuery({
     queryKey: [...KEY, "options"],
     queryFn: () => api.options(),
+    enabled: modules.data?.branches === true,
     staleTime: 5 * 60_000,
   });
+}
+
+/** Filiallar bo'limi shu maktabga yoqilganmi (formalarda maydonni yashirish uchun). */
+export function useBranchesEnabled(): boolean {
+  return useEnabledModules().data?.branches === true;
 }
 
 /** Boshqaruv (Maktablar) bo'limidagi maktablar — filial ularga bog'lanadi. */

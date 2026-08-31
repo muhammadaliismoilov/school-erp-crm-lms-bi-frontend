@@ -16,6 +16,7 @@ import { Can } from "@/components/auth/can";
 /** Bayroqli modullar — backend `GATED_MODULES` bilan bir xil ro'yxat. */
 const MODULES: { key: GatedModule; labelKey: string; hintKey: string }[] = [
   { key: "integrations", labelKey: "nav.integrations", hintKey: "modules.integrations.hint" },
+  { key: "branches", labelKey: "nav.hr.branches", hintKey: "modules.branches.hint" },
 ];
 
 /**

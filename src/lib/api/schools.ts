@@ -184,7 +184,7 @@ export function useDeleteSchool() {
 }
 
 /** Maktab darajasida yoqib/o'chirib qo'yiladigan modullar (backend bilan bir xil). */
-export type GatedModule = "integrations";
+export type GatedModule = "integrations" | "branches";
 
 export type SchoolModules = Record<GatedModule, boolean>;
 
