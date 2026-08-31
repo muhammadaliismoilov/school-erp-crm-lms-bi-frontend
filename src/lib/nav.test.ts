@@ -19,7 +19,36 @@ const bayroqli: NavLeaf = {
  * moduli (maktab darajasi). Ikkinchisi kerak, chunki `director` — GLOBAL rol:
  * bitta maktabga integratsiya berishni ruxsat orqali qilib bo'lmaydi.
  */
+const muqobil: NavLeaf = {
+  href: "/appeals",
+  labelKey: "a",
+  icon: Blocks,
+  anyOf: ["appeals.read", "appeals.read-assigned"],
+};
+
 describe("isLeafVisible", () => {
+  it("muqobilli darvozada kodlardan BITTASI yetarli", () => {
+    // `/appeals` ni ikki xil qamrovdagi foydalanuvchi ochadi: rahbariyat
+    // `appeals.read` bilan hammasini, biriktirilgan xodim
+    // `appeals.read-assigned` bilan faqat o'zinikini. Bitta kodli darvoza
+    // ikkinchisini butunlay to'sib qo'yardi — u murojaatni ko'ra oladi, lekin
+    // menyuda bo'lim yo'q edi.
+    // Dublyor haqiqiy `hasPermission` shartnomasini takrorlaydi: BERILMAGAN
+    // kod — shart yo'q, ya'ni rost. Aks holda `permission`siz yaproq test
+    // ichida hech qachon ko'rinmasdi va sinov noto'g'ri sababdan yiqilardi.
+    const faqat = (code: string) => (p?: string) => p === undefined || p === code;
+    const faqatBiriktirilgan = faqat("appeals.read-assigned");
+    const faqatRahbariyat = faqat("appeals.read");
+
+    expect(isLeafVisible(muqobil, faqatBiriktirilgan)).toBe(true);
+    expect(isLeafVisible(muqobil, faqatRahbariyat)).toBe(true);
+  });
+
+  it("muqobillarning HECH BIRI bo'lmasa ko'rinmaydi", () => {
+    const faqatUsers = (p?: string) => p === undefined || p === "users.read";
+    expect(isLeafVisible(muqobil, faqatUsers)).toBe(false);
+  });
+
   it("bayroqsiz bo'lim faqat ruxsatga qaraydi", () => {
     expect(isLeafVisible(oddiy, hamma)).toBe(true);
     expect(isLeafVisible(oddiy, hech)).toBe(false);

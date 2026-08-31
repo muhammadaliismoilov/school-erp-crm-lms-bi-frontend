@@ -41,6 +41,8 @@ const KNOWN_ACTIONS = new Set([
   "reconcile",
   "reset-password",
   "reassign-school",
+  "read-assigned",
+  "transfer",
   "*",
 ]);
 

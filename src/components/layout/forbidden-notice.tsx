@@ -11,7 +11,14 @@ import { Card } from "@/components/ui/card";
  * Ataylab redirect emas, o'rindagi ekran: yon panel joyida qoladi, foydalanuvchi
  * o'ziga ochiq bo'limga bemalol o'tadi va redirect halqasi yuzaga kelmaydi.
  */
-export function ForbiddenNotice({ permission }: { permission?: string }) {
+export function ForbiddenNotice({
+  permission,
+  module,
+}: {
+  permission?: string;
+  /** Bo'lim maktabga yoqilmagan — sabab imtiyozda emas, modul bayrog'ida. */
+  module?: string;
+}) {
   const { t } = useI18n();
 
   return (
@@ -24,9 +31,11 @@ export function ForbiddenNotice({ permission }: { permission?: string }) {
           <h2 className="font-display text-xl font-bold text-ink">
             {t("forbidden.title")}
           </h2>
-          <p className="mt-2 text-sm text-ink-muted">{t("forbidden.body")}</p>
+          <p className="mt-2 text-sm text-ink-muted">
+            {module ? t("forbidden.moduleBody") : t("forbidden.body")}
+          </p>
         </div>
-        {permission && (
+        {!module && permission && (
           <p className="text-xs text-ink-muted">
             {t("forbidden.permission")}:{" "}
             <code className="rounded bg-parchment-deep px-1.5 py-0.5 font-mono text-ink-soft">

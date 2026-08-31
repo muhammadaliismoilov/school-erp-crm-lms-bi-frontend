@@ -77,7 +77,11 @@ function backendGetPermissions(): Map<string, string[]> | null {
       if (hit[1].toUpperCase() !== "GET") continue;
       const end = index + 1 < hits.length ? hits[index + 1].index! : text.length;
       const seg = text.slice(hit.index! + hit[0].length, end);
-      const perms = seg.match(/@Permissions\(\[([^\]]*)\]/);
+      // `@Permissions(` va `[` orasidagi bo'shliq ATAYLAB ruxsat etilgan:
+      // ikkinchi argumentli shakl (`@Permissions([...], PermissionMatchMode.ANY)`)
+      // prettier tomonidan ko'p qatorga yoyiladi. Bo'shliqsiz regex bilan
+      // endpoint KO'RINMAY qolardi va darvoza "mos emas" deb belgilanardi.
+      const perms = seg.match(/@Permissions\(\s*\[([^\]]*)\]/);
       if (!perms) continue;
       const codes = [...perms[1].matchAll(/AppPermission\.([A-Z0-9_]+)/g)]
         .map((r) => catalog.get(r[1]))
@@ -141,7 +145,8 @@ describe("menyu darvozasi endpoint talabiga mos", () => {
     const mismatches: string[] = [];
 
     for (const leaf of leaves) {
-      if (!leaf.permission) continue;
+      const gates = leaf.permission ? [leaf.permission] : (leaf.anyOf ?? []);
+      if (gates.length === 0) continue;
       const pageFile = join(PAGES, leaf.href.replace(/^\//, ""), "page.tsx");
       if (!existsSync(pageFile)) continue;
 
@@ -157,9 +162,11 @@ describe("menyu darvozasi endpoint talabiga mos", () => {
 
       // Nomzod yo'q (statik hub sahifa yoki generic yuklagich) — tekshirmaymiz.
       if (candidates.size === 0) continue;
-      if (!candidates.has(leaf.permission)) {
+      // Muqobilli darvozada BITTASI mos kelsa yetarli — sahifa aynan shunday
+      // ishlaydi (`PermissionMatchMode.ANY`).
+      if (!gates.some((gate) => candidates.has(gate))) {
         mismatches.push(
-          `${leaf.href}: darvoza "${leaf.permission}", sahifa esa ${[...candidates]
+          `${leaf.href}: darvoza "${gates.join(" | ")}", sahifa esa ${[...candidates]
             .sort()
             .join(" / ")} talab qiladi`,
         );
@@ -174,8 +181,12 @@ describe("guruh ko'rinishi", () => {
   it("har guruhning HAR bir yaprog'ida darvoza bor (meros olish yo'q)", () => {
     // Guruh darajasida darvoza qolmagani uchun, imtiyozsiz yaproq hammaga
     // ochiq bo'lib qolardi. O'z-o'zini himoya qilmaydigan yaproq bo'lmasin.
+    // `anyOf` ham darvoza: sahifani ikki xil qamrovdagi foydalanuvchi ochsa
+    // (masalan `/appeals`), bitta kod ikkinchisini butunlay to'sib qo'yardi.
     const ungated = NAV_ITEMS.filter(isGroup).flatMap((group) =>
-      group.children.filter((child) => !child.permission).map((child) => child.href),
+      group.children
+        .filter((child) => !child.permission && !(child.anyOf?.length ?? 0))
+        .map((child) => child.href),
     );
     expect(ungated).toEqual([]);
   });

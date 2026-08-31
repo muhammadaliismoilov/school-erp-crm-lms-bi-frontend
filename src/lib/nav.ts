@@ -79,6 +79,15 @@ export interface NavLeaf {
   /** Required permission; omit for always-visible items (self-service pages). */
   permission?: string;
   /**
+   * Muqobil kodlar: shulardan BITTASI yetarli.
+   *
+   * Kerak bo'lgan holat: bitta sahifani ikki xil qamrovdagi foydalanuvchi
+   * ochadi. `/appeals` — rahbariyat `appeals.read` bilan hammasini,
+   * biriktirilgan xodim esa `appeals.read-assigned` bilan faqat o'zinikini
+   * ko'radi. Bitta kod bilan darvoza ikkinchisini butunlay to'sib qo'yardi.
+   */
+  anyOf?: string[];
+  /**
    * Maktab darajasidagi modul kaliti — bo'lim faqat CEO uni shu maktabga
    * YOQQANDA ko'rinadi. Ruxsatdan ALOHIDA qatlam: `director` global rol
    * bo'lgani uchun "faqat bitta maktabga berish" ruxsat orqali imkonsiz.
@@ -132,7 +141,12 @@ export const MANAGEMENT_GROUP: NavGroup = {
     { href: "/schools", labelKey: "nav.schools", icon: School, permission: "settings.read" },
     { href: "/users", labelKey: "nav.users", icon: UserCog, permission: "users.read" },
     { href: "/roles", labelKey: "nav.roles", icon: ShieldCheck, permission: "roles.read" },
-    { href: "/appeals", labelKey: "nav.appeals", icon: MessagesSquare, permission: "appeals.read" },
+    {
+      href: "/appeals",
+      labelKey: "nav.appeals",
+      icon: MessagesSquare,
+      anyOf: ["appeals.read", "appeals.read-assigned"],
+    },
     { href: "/integrations", labelKey: "nav.integrations", icon: Blocks, permission: "integrations.read", module: "integrations" },
   ],
 };
@@ -187,7 +201,7 @@ export const HR_GROUP: NavGroup = {
     { href: "/hr/candidates", labelKey: "nav.hr.candidates", icon: UserSearch, permission: "hr-candidates.read" },
     { href: "/hr/surveys", labelKey: "nav.hr.surveys", icon: FileQuestion, permission: "hr-surveys.read" },
     { href: "/hr/performance", labelKey: "nav.hr.performance", icon: Gauge, permission: "hr-performance-reviews.read" },
-    { href: "/hr/branches", labelKey: "nav.hr.branches", icon: Building2, permission: "hr-branches.read" },
+    { href: "/hr/branches", labelKey: "nav.hr.branches", icon: Building2, permission: "hr-branches.read", module: "branches" },
     { href: "/hr/departments", labelKey: "nav.hr.departments", icon: Network, permission: "hr-departments.read" },
     { href: "/hr/positions", labelKey: "nav.hr.positions", icon: BriefcaseBusiness, permission: "hr-positions.read" },
     { href: "/hr/schedules", labelKey: "nav.hr.schedules", icon: CalendarDays, permission: "hr-work-schedules.read" },
@@ -273,6 +287,7 @@ export function isLeafVisible(
   modules?: Record<string, boolean>,
 ): boolean {
   if (!can(leaf.permission)) return false;
+  if (leaf.anyOf && !leaf.anyOf.some((code) => can(code))) return false;
   if (!leaf.module) return true;
   return modules?.[leaf.module] === true;
 }

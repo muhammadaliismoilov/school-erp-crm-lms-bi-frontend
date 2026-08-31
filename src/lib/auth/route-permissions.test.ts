@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
+import { NAV_ITEMS, isGroup } from "../nav";
 import { hasPermission } from "./permissions";
 import {
   PUBLIC_ROUTES,
@@ -9,6 +10,7 @@ import {
   isUnder,
   matchRouteRule,
   normalizePath,
+  resolveRouteModule,
   resolveRoutePermission,
 } from "./route-permissions";
 
@@ -238,5 +240,27 @@ describe("super-admin", () => {
     for (const route of routes) {
       expect(hasPermission(["*.*"], resolveRoutePermission(route))).toBe(true);
     }
+  });
+});
+
+describe("modul bayrog'i marshrutga ham tushadi", () => {
+  it("nav yaprog'idagi HAR bir `module` marshrut qoidasida ham bor", () => {
+    // Yon panel bayroqli bo'limni yashiradi, lekin manzilni QO'LDA yozib
+    // kirishni bu to'smaydi. Marshrut qoidasi bayroqni ko'rmasa, sahifa
+    // ochilib ichidagi so'rovlar 403 qaytarardi — foydalanuvchi umumiy xato
+    // ekranini ko'rardi va sababini bilmasdi.
+    const gatedLeaves = NAV_ITEMS.flatMap((entry) =>
+      (isGroup(entry) ? entry.children : [entry]).filter((leaf) => leaf.module),
+    );
+    expect(gatedLeaves.length).toBeGreaterThan(0);
+
+    const missing = gatedLeaves
+      .filter((leaf) => resolveRouteModule(leaf.href) !== leaf.module)
+      .map((leaf) => `${leaf.href}: nav "${leaf.module}", marshrut "${resolveRouteModule(leaf.href)}"`);
+    expect(missing).toEqual([]);
+  });
+
+  it("bayroqsiz marshrutga modul talab qilinmaydi", () => {
+    expect(resolveRouteModule("/users")).toBeUndefined();
   });
 });

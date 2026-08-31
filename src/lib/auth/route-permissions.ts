@@ -19,6 +19,13 @@ export interface RouteRule {
   href: string;
   /** Talab qilinadigan imtiyoz; bo'sh bo'lsa — hammaga ochiq. */
   permission?: string;
+  /** Muqobil kodlar: shulardan bittasi yetarli (nav yaprog'idagi bilan bir xil). */
+  anyOf?: string[];
+  /**
+   * Maktab darajasidagi modul kaliti. Imtiyozdan ALOHIDA qatlam: imtiyoz bor,
+   * lekin modul shu maktabga yoqilmagan bo'lishi mumkin.
+   */
+  module?: string;
 }
 
 /**
@@ -57,8 +64,20 @@ export const PUBLIC_ROUTES: readonly string[] = [
 function rulesFromNav(): RouteRule[] {
   return NAV_ITEMS.flatMap<RouteRule>((entry) =>
     isGroup(entry)
-      ? entry.children.map((child) => ({ href: child.href, permission: child.permission }))
-      : [{ href: entry.href, permission: entry.permission }],
+      ? entry.children.map((child) => ({
+          href: child.href,
+          permission: child.permission,
+          anyOf: child.anyOf,
+          module: child.module,
+        }))
+      : [
+          {
+            href: entry.href,
+            permission: entry.permission,
+            anyOf: entry.anyOf,
+            module: entry.module,
+          },
+        ],
   );
 }
 
@@ -103,5 +122,43 @@ export function resolveRoutePermission(pathname: string): string | undefined {
   if (PUBLIC_ROUTES.some((open) => normalizePath(open) === path)) {
     return undefined;
   }
-  return matchRouteRule(path)?.permission;
+  const rule = matchRouteRule(path);
+  // Muqobilli marshrutda "talab qilinadigan kod" bitta emas — ko'rsatish uchun
+  // birinchisi olinadi (`ForbiddenNotice` shuni yozadi), tekshiruvni esa
+  // `resolveRouteRequirement` bajaradi.
+  return rule?.permission ?? rule?.anyOf?.[0];
+}
+
+/**
+ * Marshrut bayroqli modulga bog'langan bo'lsa — uning kaliti.
+ *
+ * Yon panel bayroqli bo'limni yashiradi, lekin manzilni QO'LDA yozib kirishni
+ * bu to'smaydi: sahifa ochilib, ichidagi so'rovlar 403 qaytarardi va
+ * foydalanuvchi umumiy xato ekranini ko'rardi. Shu funksiya marshrut
+ * qorovulini ham xuddi menyu bilan bir xil manbaga bog'laydi.
+ */
+export function resolveRouteModule(pathname: string): string | undefined {
+  const path = normalizePath(pathname);
+  if (PUBLIC_ROUTES.some((open) => normalizePath(open) === path)) {
+    return undefined;
+  }
+  return matchRouteRule(path)?.module;
+}
+
+/**
+ * Marshrut uchun to'liq shart — `<Can>` va `useAllowed` bilan bir xil shakl.
+ * Sahifa qorovuli aynan SHUNI baholashi kerak: `resolveRoutePermission` faqat
+ * bitta kod qaytaradi va muqobilli marshrutda noto'g'ri javob berardi.
+ */
+export function resolveRouteRequirement(
+  pathname: string,
+): { permission?: string; anyOf?: string[] } | undefined {
+  const path = normalizePath(pathname);
+  if (PUBLIC_ROUTES.some((open) => normalizePath(open) === path)) {
+    return undefined;
+  }
+  const rule = matchRouteRule(path);
+  if (!rule) return undefined;
+  if (!rule.permission && !rule.anyOf) return undefined;
+  return { permission: rule.permission, anyOf: rule.anyOf };
 }
