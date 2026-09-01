@@ -18,6 +18,7 @@ import {
 import { useEnabledModules } from "@/lib/api/schools";
 import { resolveBrand } from "@/lib/tenant/brand";
 import { cn, initials } from "@/lib/utils";
+import { DbHealthDot } from "@/components/system/db-health-dot";
 
 function isLeafActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -139,7 +140,14 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="bg-navy-texture sticky top-0 hidden h-screen w-64 shrink-0 flex-col px-4 py-6 lg:flex">
+    <aside
+      /*
+        `z-20`: yon panel DOM'da asosiy maydondan OLDIN keladi, ya'ni z-index'siz
+        undagi ochiladigan elementlar (sog'liq paneli) kontent kartochkalari
+        ostida qolib ketardi. Modal qatlamidan (z-50) past.
+      */
+      className="bg-navy-texture sticky top-0 z-20 hidden h-screen w-64 shrink-0 flex-col px-4 py-6 lg:flex"
+    >
       <div className="flex items-center gap-3 px-2">
         <span
           className={cn(
@@ -197,6 +205,7 @@ export function Sidebar() {
             </p>
           </div>
         </Link>
+        <DbHealthDot />
         <button
           onClick={handleSignOut}
           title={t("nav.logout")}

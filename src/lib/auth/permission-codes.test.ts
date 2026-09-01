@@ -43,6 +43,7 @@ const KNOWN_ACTIONS = new Set([
   "reassign-school",
   "read-assigned",
   "transfer",
+  "monitor",
   "*",
 ]);
 

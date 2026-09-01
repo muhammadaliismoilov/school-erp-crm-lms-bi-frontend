@@ -6,6 +6,11 @@ import {
   type Locale,
   type SuccessEnvelope,
 } from "./types";
+import {
+  DB_HEALTH_HEADER,
+  parseLevel,
+  setDbHealthLevel,
+} from "@/lib/db-health/store";
 
 const BASE_URL = "/api/v1";
 
@@ -170,6 +175,18 @@ export async function apiRequest<T>(
       body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
     cache: "no-store",
   });
+
+  // Baza sog'lig'i darajasi har javobda bepul keladi (`system.monitor` egasiga).
+  // Chiroq shundan boqiladi — alohida so'rov yubormaydi.
+  //
+  // TRY/CATCH ATAYLAB: bu yon kanal, va u ASOSIY so'rovni hech qachon yiqita
+  // olmasligi kerak. Kuzatuv vositasi kuzatayotgan narsani buzsa — eng yomon
+  // turdagi nuqson bo'lardi.
+  try {
+    setDbHealthLevel(parseLevel(res.headers?.get(DB_HEALTH_HEADER)));
+  } catch {
+    // Sog'liq chirog'i yangilanmaydi; so'rov o'z yo'lida davom etadi.
+  }
 
   // 431 = Request Header Fields Too Large. Deploydan oldin berilgan tokenlar
   // ichida 439 tagacha ruxsat bo'lgan (15 KB) — ular 16 KB sarlavha limitidan
