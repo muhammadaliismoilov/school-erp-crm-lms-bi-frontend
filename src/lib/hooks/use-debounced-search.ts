@@ -21,6 +21,12 @@ export interface DebouncedSearchOptions {
  * Input xom qiymatni ko'rsatishda davom etadi — yozish darhol ko'rinadi,
  * faqat SO'ROV kechikadi.
  *
+ * KECHIKISH 400 ms: debounce harflar orasidagi tanaffus shu qiymatdan oshganda
+ * ishlaydi, ya'ni yutuq YOZISH TEZLIGIGA bog'liq. 300 ms da o'rtacha tezlikdagi
+ * (~40 so'z/daqiqa, harf orasi ~300 ms) foydalanuvchi uchun so'rovlar baribir
+ * ketaverardi. 400 ms o'rtacha va sekin yozuvchini ham qamrab oladi; evaziga
+ * natija oxirgi harfdan keyin 100 ms kechroq ko'rinadi.
+ *
  * `undefined` qaytishi "qidiruv yo'q" degani: `search: searchQuery` deb
  * yozish yetarli, `|| undefined` shart emas.
  */
@@ -28,7 +34,7 @@ export function useDebouncedSearch(
   raw: string,
   options: DebouncedSearchOptions = {},
 ): string | undefined {
-  const { delay = 300, minLength = 2 } = options;
+  const { delay = 400, minLength = 2 } = options;
   const query = toSearchQuery(raw, minLength);
   const [settled, setSettled] = useState(query);
 
